@@ -69,5 +69,5 @@ server.listen(PORT, HOST, () => {
   const src = process.env.TPS_URL && !process.env.TPS_URL.startsWith("${")
     ? `remote: ${process.env.TPS_URL}`
     : "demo(内置演示数据)";
-  console.log(`[tps-monitor] 大屏已启动: http://${HOST}:${PORT}   数据源: ${src}`);
+  console.log(`[zcode-tps-monitor] 大屏已启动: http://${HOST}:${PORT}   数据源: ${src}`);
 });

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tps-monitor 的 stdio MCP server。协议实现沿用官方 example-plugin 的
+// zcode-tps-monitor 的 stdio MCP server。协议实现沿用官方 example-plugin 的
 // Content-Length 帧 + 换行 JSON 兼容写法,业务逻辑复用 scripts/lib/collect-core.mjs。
 //
 // 手工冒烟测试:
@@ -10,7 +10,7 @@
 
 import { snapshot, watch, formatSnapshot, formatWatch } from "../scripts/lib/collect-core.mjs";
 
-const SERVER_INFO = { name: "tps-monitor", version: "0.1.0" };
+const SERVER_INFO = { name: "zcode-tps-monitor", version: "0.1.0" };
 
 const TOOLS = [
   {
@@ -80,7 +80,7 @@ async function handleRequest(msg) {
         }
       } catch (err) {
         ok(id, {
-          content: [{ type: "text", text: `[tps-monitor] 采集失败: ${err.message}` }],
+          content: [{ type: "text", text: `[zcode-tps-monitor] 采集失败: ${err.message}` }],
           isError: true,
         });
       }
@@ -140,4 +140,4 @@ process.stdin.on("end", () => {
   if (buffer.length) handleRaw(buffer.toString("utf8"));
 });
 
-process.stderr.write("[tps-monitor] stdio MCP server ready\n");
+process.stderr.write("[zcode-tps-monitor] stdio MCP server ready\n");

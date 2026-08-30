@@ -20,7 +20,7 @@ if (sid) {
 }
 
 const hint =
-  "[tps-monitor] 已就绪。Token 速率监控:每轮用户消息都会注入【token 速率】数据(真实,来自 usage 库),请在每条回复末尾原样附上「📊 」开头的指标行。查询命令:/tps。大屏:dashboard/server.mjs(http://127.0.0.1:7423)。悬浮条:dashboard/overlay.ps1。";
+  "[zcode-tps-monitor] 已就绪。Token 速率监控:每轮用户消息都会注入【token 速率】数据(真实,来自 usage 库),请在每条回复末尾原样附上「📊 」开头的指标行。查询命令:/tps。大屏:dashboard/server.mjs(http://127.0.0.1:7423)。悬浮条:dashboard/overlay.ps1。";
 
 process.stdout.write(
   JSON.stringify({

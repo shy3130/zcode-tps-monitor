@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "tps-monitor": {
+    "zcode-tps-monitor": {
       "type": "stdio",
       "command": "node",
       "args": [

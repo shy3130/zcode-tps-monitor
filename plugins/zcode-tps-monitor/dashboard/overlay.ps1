@@ -1,4 +1,4 @@
-﻿# tps-monitor Token 速率监控条:完全透明、纯文字、无彩色、字号统一。
+﻿# zcode-tps-monitor Token 速率监控条:完全透明、纯文字、无彩色、字号统一。
 # 跟随 ZCode 深浅主题(像素采样);统计范围为当前会话。
 # DPI:进程强制 DPI 感知,所有坐标按缩放比换算,确保落在 ZCode 布局内部。
 # 启动:powershell -NoProfile -ExecutionPolicy Bypass -File overlay.ps1

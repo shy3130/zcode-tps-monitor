@@ -1,5 +1,5 @@
 {
-  "description": "tps-monitor: session greeting + per-prompt live metrics",
+  "description": "zcode-tps-monitor: session greeting + per-prompt live metrics",
   "hooks": {
     "SessionStart": [
       {
@@ -12,7 +12,7 @@
               "${ZCODE_PLUGIN_ROOT}/hooks/session-start.mjs"
             ],
             "timeoutMs": 3000,
-            "statusMessage": "tps-monitor: 初始化…"
+            "statusMessage": "zcode-tps-monitor: 初始化…"
           }
         ]
       }
@@ -27,7 +27,7 @@
               "${ZCODE_PLUGIN_ROOT}/hooks/prompt-submit.mjs"
             ],
             "timeoutMs": 8000,
-            "statusMessage": "tps-monitor: 采集实时指标…"
+            "statusMessage": "zcode-tps-monitor: 采集实时指标…"
           }
         ]
       }

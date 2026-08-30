@@ -2,7 +2,7 @@
 description: 打开 TPS 实时监控大屏(浏览器页面,每秒自动刷新)
 ---
 
-拉起 tps-monitor 的实时监控大屏并在浏览器中打开。
+拉起 zcode-tps-monitor 的实时监控大屏并在浏览器中打开。
 
 执行步骤:
 
@@ -13,7 +13,7 @@ description: 打开 TPS 实时监控大屏(浏览器页面,每秒自动刷新)
    ```
    插件目录 = 本插件安装位置(技能 base directory 的上两级);端口默认 7423,可用 `--port N` 调整。
 3. 用系统命令打开浏览器:Windows 上 `start http://127.0.0.1:7423`。
-4. 告知用户:页面每秒自动刷新;顶部标签显示数据模式;要接入真实数据源,在 设置 → 插件管理 → tps-monitor 配置 `metrics_url` 后重启大屏进程(或给 server.mjs 设置环境变量 TPS_URL)。
+4. 告知用户:页面每秒自动刷新;顶部标签显示数据模式;要接入真实数据源,在 设置 → 插件管理 → zcode-tps-monitor 配置 `metrics_url` 后重启大屏进程(或给 server.mjs 设置环境变量 TPS_URL)。
 
 如需停止大屏:结束对应 node 进程即可。
 

@@ -2,7 +2,7 @@
 description: 查看 TPS 吞吐、延迟分位数、错误率与系统资源快照
 ---
 
-使用 tps-monitor 插件获取吞吐指标并以中文清晰展示。
+使用 zcode-tps-monitor 插件获取吞吐指标并以中文清晰展示。
 
 执行步骤：
 
@@ -13,6 +13,6 @@ description: 查看 TPS 吞吐、延迟分位数、错误率与系统资源快�
 展示要求:
 
 - 用列表或表格呈现:TPS、延迟 p50/p95/p99、错误率、CPU、内存。
-- 注明数据模式:remote(真实接口)或 demo(演示数据)。若是 demo,提醒用户可在 设置 → 插件管理 → tps-monitor 中配置 metrics_url 接入真实数据源。
+- 注明数据模式:remote(真实接口)或 demo(演示数据)。若是 demo,提醒用户可在 设置 → 插件管理 → zcode-tps-monitor 中配置 metrics_url 接入真实数据源。
 
 用户附加要求:$ARGUMENTS

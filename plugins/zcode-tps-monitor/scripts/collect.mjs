@@ -20,6 +20,6 @@ try {
     console.log(seconds ? formatWatch(data) : formatSnapshot(data));
   }
 } catch (err) {
-  console.error(`[tps-monitor] 采集失败: ${err.message}`);
+  console.error(`[zcode-tps-monitor] 采集失败: ${err.message}`);
   process.exit(1);
 }

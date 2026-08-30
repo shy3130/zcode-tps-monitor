@@ -1,4 +1,4 @@
-# tps-monitor
+# zcode-tps-monitor
 
 ZCode 插件:在会话里按需查看 TPS 吞吐、延迟分位数、错误率与本机系统资源。
 
@@ -6,9 +6,9 @@ ZCode 插件:在会话里按需查看 TPS 吞吐、延迟分位数、错误率�
 
 | 形态 | 名称 | 说明 |
 |---|---|---|
-| **实时大屏** | `dashboard/server.mjs` | 浏览器监控面板,每秒自动刷新:`/tps-monitor:dashboard` 一键拉起,或手动 `node dashboard/server.mjs` |
-| 斜杠命令 | `/tps-monitor:tps` | 即时快照;`/tps-monitor:tps 10` 采样观察 10 秒 |
-| 技能 | `tps-monitor` | 问"当前 TPS 多少 / 打开监控面板"时自动触发 |
+| **实时大屏** | `dashboard/server.mjs` | 浏览器监控面板,每秒自动刷新:`/zcode-tps-monitor:dashboard` 一键拉起,或手动 `node dashboard/server.mjs` |
+| 斜杠命令 | `/zcode-tps-monitor:tps` | 即时快照;`/zcode-tps-monitor:tps 10` 采样观察 10 秒 |
+| 技能 | `zcode-tps-monitor` | 问"当前 TPS 多少 / 打开监控面板"时自动触发 |
 | MCP 工具 | `tps_snapshot` / `tps_watch` | 供 agent 调用取数 |
 | 钩子 | SessionStart | 会话启动时输出一行使用提示 |
 
@@ -26,7 +26,7 @@ TPS_URL=http://host/metrics node dashboard/server.mjs   # 接真实数据源
 ## 数据源
 
 - **demo(默认)**:内置模拟数据(随机游走,数值连续逼真),开箱即可看到效果。
-- **remote(真实)**:在 设置 → 插件管理 → tps-monitor 中配置 `metrics_url`,
+- **remote(真实)**:在 设置 → 插件管理 → zcode-tps-monitor 中配置 `metrics_url`,
   指向任何返回 JSON 的指标接口。字段兼容(支持最多三层嵌套):
   - TPS:`tps` / `qps` / `throughput` / `transactionsPerSecond`
   - 延迟:`p50` / `p95` / `p99`(或 `latency_p50` 等)
@@ -55,12 +55,12 @@ printf '%s\n' \
 ## 目录结构
 
 ```
-tps-monitor/
+zcode-tps-monitor/
 ├── .zcode-plugin/plugin.json   # 插件清单(name/userConfig)
 ├── .claude-plugin/plugin.json  # 兼容清单
 ├── .mcp.json                   # MCP server 注册(${ZCODE_PLUGIN_ROOT})
-├── commands/tps.md             # /tps-monitor:tps
-├── skills/tps-monitor/SKILL.md # 自动触发技能
+├── commands/tps.md             # /zcode-tps-monitor:tps
+├── skills/zcode-tps-monitor/SKILL.md # 自动触发技能
 ├── hooks/hooks.json            # SessionStart 提示
 ├── mcp/tps-server.mjs          # stdio MCP server
 ├── dashboard/                  # 实时监控大屏
