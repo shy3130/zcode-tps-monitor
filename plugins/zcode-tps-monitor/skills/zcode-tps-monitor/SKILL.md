@@ -1,5 +1,5 @@
 ---
-name: tps-monitor
+name: zcode-tps-monitor
 description: Token 输出速率与吞吐监控。当用户询问 token 速率、生成速度、tok/s、模型输出快慢、TTFT(首 token 延迟),或 TPS、QPS、吞吐、接口延迟、想看实时监控大屏时使用。Token 速率读取 ZCode usage 数据库,是真实数据;业务 TPS 支持指标接口或演示数据。
 ---
 

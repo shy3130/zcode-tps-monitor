@@ -1,6 +1,13 @@
 # zcode-tps-monitor
 
-ZCode 插件:在会话里按需查看 TPS 吞吐、延迟分位数、错误率与本机系统资源。
+ZCode 插件:每轮对话自动在回复末尾显示真实 token 输出速率(tok/s,读取 ZCode usage 数据库),
+并可按需查看 TPS 吞吐、延迟分位数、错误率与本机系统资源。
+
+## 效果预览
+
+每轮回复末尾自动注入的 token 速率行(真实数据,含首字延迟、生成耗时、近几次均值/峰值):
+
+![token 速率行效果](docs/effect-token-rate.png)
 
 ## 提供的能力
 
@@ -10,7 +17,7 @@ ZCode 插件:在会话里按需查看 TPS 吞吐、延迟分位数、错误率�
 | 斜杠命令 | `/zcode-tps-monitor:tps` | 即时快照;`/zcode-tps-monitor:tps 10` 采样观察 10 秒 |
 | 技能 | `zcode-tps-monitor` | 问"当前 TPS 多少 / 打开监控面板"时自动触发 |
 | MCP 工具 | `tps_snapshot` / `tps_watch` | 供 agent 调用取数 |
-| 钩子 | SessionStart | 会话启动时输出一行使用提示 |
+| 钩子 | SessionStart + UserPromptSubmit | 会话启动提示;每轮在回复末尾注入 token 速率行(默认开启,见上方效果预览) |
 
 ### 实时大屏
 
@@ -61,13 +68,14 @@ zcode-tps-monitor/
 ├── .mcp.json                   # MCP server 注册(${ZCODE_PLUGIN_ROOT})
 ├── commands/tps.md             # /zcode-tps-monitor:tps
 ├── skills/zcode-tps-monitor/SKILL.md # 自动触发技能
-├── hooks/hooks.json            # SessionStart 提示
+├── hooks/hooks.json            # SessionStart 提示 + 每轮 token 速率注入
 ├── mcp/tps-server.mjs          # stdio MCP server
 ├── dashboard/                  # 实时监控大屏
 │   ├── server.mjs              # HTTP 服务(页面 + /api/metrics)
 │   └── index.html              # 大屏布局(纯原生,无外部依赖)
 └── scripts/
-    ├── collect.mjs             # CLI 入口
+    ├── token-rate.mjs          # token 速率 CLI(人类可读 / --json)
+    ├── collect.mjs             # 业务 TPS CLI 入口
     └── lib/collect-core.mjs    # 采集核心(CLI/MCP 共用,零依赖)
 ```
 
