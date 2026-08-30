@@ -27,6 +27,8 @@ node scripts/token-rate.mjs --json   # JSON
 
 可设置 `ZCODE_SESSION_ID` 环境变量只统计当前会话(钩子已自动设置)。
 
+数据库路径默认按用户主目录解析(`~/.zcode/cli/db/db.sqlite`,Windows 同理),可用 `ZCODE_USAGE_DB` 环境变量覆盖;以只读方式打开 WAL 库,不影响运行中的客户端。
+
 ### 业务 TPS(demo / remote)
 
 - **demo(默认)**:内置模拟数据(随机游走,数值连续逼真),开箱即可看到效果。

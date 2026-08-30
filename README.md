@@ -110,6 +110,10 @@ A:插件机制、钩子与数据源均绑定 ZCode,token 速率功能是 ZCode �
 
 A:速率由 ZCode usage 数据库中的真实 token 累计值计算得出,口径为模型输出侧 token;与其他工具显示的统计数字可能因统计窗口不同而略有差异。
 
+**Q:macOS / Linux 支持吗?**
+
+A:支持。钩子、命令、大屏、MCP 均为跨平台 Node 实现;usage 数据库路径按用户主目录自动解析(`~/.zcode/cli/db/db.sqlite`),特殊安装位置可用 `ZCODE_USAGE_DB` 环境变量覆盖。唯一例外是桌面悬浮条 `overlay.ps1`,它依赖 Windows API,仅限 Windows(macOS 用户用监控大屏即可)。
+
 **Q:演示数据怎么关掉?**
 
 A:演示数据只影响"业务 TPS"部分(Token 速率始终真实);不配置 `metrics_url` 即为演示模式,配置后自动切换为真实数据源。

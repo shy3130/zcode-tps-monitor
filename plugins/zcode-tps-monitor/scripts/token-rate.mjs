@@ -7,8 +7,13 @@
 // 只读打开 WAL 数据库,不影响运行中的客户端。
 
 import { DatabaseSync } from "node:sqlite";
+import os from "node:os";
+import path from "node:path";
 
-const DB_PATH = process.env.ZCODE_USAGE_DB || "C:/Users/Administrator/.zcode/cli/db/db.sqlite";
+// 跨平台默认路径(macOS/Linux: ~/.zcode/...;Windows: %USERPROFILE%\.zcode\...),可用 ZCODE_USAGE_DB 覆盖
+const DB_PATH =
+  process.env.ZCODE_USAGE_DB ||
+  path.join(os.homedir(), ".zcode", "cli", "db", "db.sqlite");
 const N = process.env.TOKEN_RATE_WINDOW ? Number(process.env.TOKEN_RATE_WINDOW) : 5;   // 统计窗口(均/峰)
 const HIST = Number(process.env.TOKEN_RATE_HIST) || 60;                                // 曲线历史点数
 
