@@ -1,7 +1,7 @@
 # zcode-tps-monitor
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Node](https://img.shields.io/badge/node-%E2%89%A5%2018-brightgreen)
+![Node](https://img.shields.io/badge/node-%E2%89%A5%2022.5-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 
 **ZCode 会话级 Token 速率监控插件。** 每轮对话自动在回复末尾显示真实 tok/s —— 数据直接读取 ZCode usage 数据库,非模型自述、非估算;另附实时监控大屏、斜杠命令、MCP 工具与可选的业务 TPS 监控。
@@ -65,7 +65,7 @@
 | 桌面悬浮条 | 运行 `dashboard/overlay.ps1`(Windows) |
 | agent 取数 | MCP 工具 `tps_snapshot` / `tps_watch` |
 
-要求 Node ≥ 18。
+要求 Node ≥ 22.5(需内置 `node:sqlite`,Windows / macOS / Linux 相同)。
 
 ## 配置:接入业务 TPS(可选)
 
