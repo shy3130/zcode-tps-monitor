@@ -8,9 +8,18 @@
 //     '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
 //     | node mcp/tps-server.mjs
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { snapshot, watch, formatSnapshot, formatWatch } from "../scripts/lib/collect-core.mjs";
 
-const SERVER_INFO = { name: "zcode-tps-monitor", version: "0.1.0" };
+// 版本号自动跟随插件清单,避免与插件版本脱节
+const PLUGIN_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+let VERSION = "0.0.0";
+try {
+  VERSION = JSON.parse(readFileSync(join(PLUGIN_ROOT, ".zcode-plugin", "plugin.json"), "utf8")).version;
+} catch {}
+const SERVER_INFO = { name: "zcode-tps-monitor", version: VERSION };
 
 const TOOLS = [
   {

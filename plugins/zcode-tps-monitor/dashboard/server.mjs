@@ -28,10 +28,34 @@ const args = process.argv.slice(2);
 const portIdx = args.indexOf("--port");
 const PORT = portIdx !== -1 ? Number(args[portIdx + 1]) || 7423 : 7423;
 const HOST = "127.0.0.1";
+// 空闲自退:连续无 HTTP 请求超过该分钟数则自动退出,避免关闭会话后残留后台进程(0 = 不自退)
+const idleIdx = args.indexOf("--idle-exit");
+const IDLE_EXIT_MIN = idleIdx !== -1 ? Number(args[idleIdx + 1]) : 180;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const indexHtml = fs.readFileSync(path.join(here, "index.html"), "utf8");
 
+// PID 文件:供 /tps-doctor 探测运行状态并提供停止方式
+const PID_FILE = path.join(os.homedir(), ".zcode", "tps-monitor.dashboard.pid");
+function writePid() {
+  try {
+    fs.mkdirSync(path.dirname(PID_FILE), { recursive: true });
+    fs.writeFileSync(PID_FILE, String(process.pid));
+  } catch {}
+}
+function cleanup() {
+  try {
+    if (fs.existsSync(PID_FILE) && fs.readFileSync(PID_FILE, "utf8").trim() === String(process.pid)) {
+      fs.unlinkSync(PID_FILE);
+    }
+  } catch {}
+}
+process.on("SIGINT", () => process.exit(0));
+process.on("SIGTERM", () => process.exit(0));
+process.on("exit", cleanup);
+
+let lastRequestAt = Date.now();
 const server = http.createServer(async (req, res) => {
+  lastRequestAt = Date.now();
   if (req.url === "/" || req.url.startsWith("/index")) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(indexHtml);
@@ -70,4 +94,21 @@ server.listen(PORT, HOST, () => {
     ? `remote: ${process.env.TPS_URL}`
     : "demo(内置演示数据)";
   console.log(`[zcode-tps-monitor] 大屏已启动: http://${HOST}:${PORT}   数据源: ${src}`);
+  if (IDLE_EXIT_MIN > 0) {
+    console.log(`[zcode-tps-monitor] ${IDLE_EXIT_MIN} 分钟无访问将自动退出(--idle-exit 0 关闭该行为)`);
+  }
+  writePid();
 });
+
+// 空闲自退巡检:取空闲阈值的一半作为巡检间隔(夹紧在 1s~60s)
+if (IDLE_EXIT_MIN > 0) {
+  const tick = Math.min(60000, Math.max(1000, (IDLE_EXIT_MIN * 60 * 1000) / 2));
+  const timer = setInterval(() => {
+    if (Date.now() - lastRequestAt > IDLE_EXIT_MIN * 60 * 1000) {
+      console.log("[zcode-tps-monitor] 长时间无访问,大屏自动退出");
+      server.close(() => process.exit(0));
+      setTimeout(() => process.exit(0), 2000).unref();
+    }
+  }, tick);
+  timer.unref();
+}
