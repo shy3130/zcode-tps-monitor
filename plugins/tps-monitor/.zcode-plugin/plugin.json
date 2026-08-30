@@ -1,0 +1,30 @@
+{
+  "name": "tps-monitor",
+  "version": "0.6.0",
+  "description": "Token output-rate monitor for ZCode: shows real tokens/sec (from ZCode usage DB) per turn in chat via hooks, a /tps command, MCP tools, and a real-time dashboard; also supports service-TPS monitoring via a configurable metrics URL or demo data.",
+  "description_i18n": {
+    "en": "TPS throughput monitor: /tps command and MCP tools to snapshot TPS, latency percentiles, error rate, and local system resources. Supports a real metrics URL or built-in demo data.",
+    "zh-CN": "ZCode Token 输出速率监控：每轮对话自动在回复末尾显示真实 tok/s（读取 ZCode usage 数据库），另有 /tps 命令、MCP 工具与实时大屏；同时支持业务 TPS 监控（可配置指标接口或演示数据）。"
+  },
+  "author": {
+    "name": "Administrator"
+  },
+  "license": "MIT",
+  "keywords": [
+    "tps",
+    "monitor",
+    "metrics",
+    "performance",
+    "throughput"
+  ],
+  "commands": "commands",
+  "skills": "skills",
+  "userConfig": {
+    "metrics_url": {
+      "title": "Metrics URL",
+      "description": "HTTP 接口地址，返回包含 tps/qps 字段的 JSON；留空则使用演示数据。",
+      "type": "string",
+      "required": false
+    }
+  }
+}

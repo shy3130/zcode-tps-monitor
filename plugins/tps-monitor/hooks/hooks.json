@@ -1,0 +1,36 @@
+{
+  "description": "tps-monitor: session greeting + per-prompt live metrics",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "process",
+            "command": "node",
+            "args": [
+              "${ZCODE_PLUGIN_ROOT}/hooks/session-start.mjs"
+            ],
+            "timeoutMs": 3000,
+            "statusMessage": "tps-monitor: 初始化…"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "process",
+            "command": "node",
+            "args": [
+              "${ZCODE_PLUGIN_ROOT}/hooks/prompt-submit.mjs"
+            ],
+            "timeoutMs": 8000,
+            "statusMessage": "tps-monitor: 采集实时指标…"
+          }
+        ]
+      }
+    ]
+  }
+}

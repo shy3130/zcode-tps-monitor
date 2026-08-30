@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Token 输出速率 · ZCode 实时监控</title>
+<style>
+  :root {
+    --bg: #0b1020; --panel: #131a2e; --panel2: #0f1526;
+    --line: #232c47; --text: #e8ecf7; --dim: #8b94ad;
+    --accent: #4da3ff; --green: #2fd67b; --orange: #ffb454; --red: #ff5d73;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; padding: 16px; gap: 12px;
+  }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
+  .badge {
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--green); color: var(--green); background: var(--panel2);
+  }
+  .clock { margin-left: auto; color: var(--dim); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+  .dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 18px; position: relative; overflow: hidden;
+  }
+  .card .label { color: var(--dim); font-size: 13px; }
+  .card .value { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 6px; }
+  .card .unit { font-size: 14px; color: var(--dim); font-weight: 400; margin-left: 4px; }
+  .card .delta { font-size: 12px; margin-top: 6px; color: var(--dim); min-height: 16px; }
+  .card .delta.model { color: var(--text); font-weight: 600; font-size: 13px; }
+  .card::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); }
+  .mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .mini { grid-template-columns: repeat(2, 1fr); } }
+  .mini .m {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px;
+  }
+  .mini .m .label { color: var(--dim); font-size: 12px; }
+  .mini .m .v { margin-top: 4px; }
+  .mini .m .v .n { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .mini .m .v .u { font-size: 12px; color: var(--dim); font-weight: 400; margin-left: 3px; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; display: flex; flex-direction: column; flex: 1;
+  }
+  .panel h2 { font-size: 14px; font-weight: 600; color: var(--dim); margin-bottom: 8px; display: flex; gap: 14px; align-items: center; }
+  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--dim); font-weight: 400; margin-left: auto; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  canvas { width: 100%; flex: 1; }
+  .sysrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--dim); margin: 8px 0 4px; }
+  .sysrow b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 4px; background: var(--accent); transition: width .6s; }
+  .bar.warn > div { background: var(--orange); }
+  .bar.crit > div { background: var(--red); }
+  footer { color: var(--dim); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>⚡ Token 输出速率 · ZCode 实时监控</h1>
+    <span class="badge">真实数据 · 当前会话 · 主对话</span>
+    <span class="clock"><span class="dot" id="livendot"></span><span id="clock">--:--:--</span></span>
+  </header>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">最近一次主回复的生成速度</div>
+      <div class="value"><span id="toks">--</span><span class="unit">tok/s</span></div>
+      <div class="delta model" id="tokmodel">模型 --</div>
+      <div class="delta" id="tokinfo">等待数据…</div>
+    </div>
+    <div class="card">
+      <div class="label">首字延迟(TTFT)</div>
+      <div class="value"><span id="ttft">--</span><span class="unit">s</span></div>
+      <div class="delta" id="ttftinfo">从发出消息到模型开始出字</div>
+    </div>
+  </div>
+
+  <div class="mini">
+    <div class="m"><div class="label">近5次平均</div><div class="v"><span class="n" id="avg">--</span><span class="u">tok/s</span></div></div>
+    <div class="m"><div class="label">近5次峰值</div><div class="v"><span class="n" id="max">--</span><span class="u">tok/s</span></div></div>
+    <div class="m"><div class="label">上轮输出</div><div class="v"><span class="n" id="out">--</span><span class="u">tok</span></div></div>
+    <div class="m"><div class="label">会话请求数</div><div class="v"><span class="n" id="cnt">--</span><span class="u">次</span></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>生成速率曲线 <span class="legend"><span><i style="background:var(--green)"></i>tok/s</span><span id="tokrange"></span></span></h2>
+    <canvas id="tokChart" height="260"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>本机资源(真实)</h2>
+    <div class="sysrow"><span>CPU <b id="cpu">--%</b> (<span id="cores">-</span> 核)</span></div>
+    <div class="bar" id="cpubar"><div style="width:0%"></div></div>
+    <div class="sysrow"><span>内存 <b id="mem">--</b></span><span><b id="mempct">--%</b></span></div>
+    <div class="bar" id="membar"><div style="width:0%"></div></div>
+    <div class="sysrow"><span>主机运行 <b id="uptime">--</b></span><span id="platform">-</span></div>
+  </div>
+
+  <footer>每秒自动刷新 · 数据源:ZCode usage 数据库(真实) · 仅统计当前会话主对话请求</footer>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+function setNum(id, v, digits = 0) {
+  $(id).textContent = v == null ? "--" : Number(v).toFixed(digits);
+}
+
+function drawLine(canvas, series, colors, opts = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const all = series.flat().filter((v) => v != null);
+  if (!all.length) return;
+  let min = Math.min(...all), max = Math.max(...all);
+  if (opts.zero) min = 0;
+  const pad = (max - min) * 0.15 || 1;
+  min -= pad; max += pad;
+  const n = Math.max(...series.map((s) => s.length));
+  const x = (i) => (n <= 1 ? 0 : (i / (n - 1)) * (w - 44));
+  const y = (v) => h - 18 - ((v - min) / (max - min)) * (h - 30);
+
+  ctx.strokeStyle = "#232c47"; ctx.fillStyle = "#8b94ad";
+  ctx.lineWidth = 1; ctx.font = "11px Segoe UI";
+  for (let g = 0; g <= 3; g++) {
+    const gy = 12 + ((h - 30) * g) / 3;
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w - 44, gy); ctx.stroke();
+    ctx.fillText(Math.round(max - ((max - min) * g) / 3), w - 38, gy + 4);
+  }
+
+  series.forEach((data, si) => {
+    if (!data.length) return;
+    const color = colors[si];
+    if (opts.fill && si === 0) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, color + "33"); grad.addColorStop(1, color + "00");
+      ctx.beginPath();
+      ctx.moveTo(x(0), y(data[0]));
+      data.forEach((v, i) => ctx.lineTo(x(i + n - data.length), y(v)));
+      ctx.lineTo(x(n - 1), h - 18); ctx.lineTo(x(n - data.length), h - 18);
+      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    data.forEach((v, i) => {
+      const px = x(i + n - data.length), py = y(v);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    const last = data[data.length - 1];
+    ctx.beginPath();
+    ctx.arc(x(n - 1), y(last), 3, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  });
+
+  if (opts.avgLine && series[0].length) {
+    const avg = series[0].reduce((a, b) => a + b, 0) / series[0].length;
+    ctx.beginPath(); ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "#2a3a63"; ctx.lineWidth = 1;
+    ctx.moveTo(0, y(avg)); ctx.lineTo(w - 44, y(avg)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+// --- Token 速率(真实数据) ---
+const tokHist = [];
+
+async function tickTok() {
+  try {
+    const res = await fetch("/api/token-rate", { cache: "no-store" });
+    if (!res.ok) return;
+    const r = await res.json();
+    $("livendot").classList.remove("err");
+    if (r.latest) {
+      setNum("toks", r.latest.tokPerSec, 1);
+      setNum("ttft", r.latest.ttftMs != null ? r.latest.ttftMs / 1000 : null, 1);
+      const genS = r.latest.genMs != null ? (r.latest.genMs / 1000).toFixed(1) : "-";
+      $("tokmodel").textContent = "模型 " + (r.latest.model || "--");
+      $("tokinfo").textContent = "输出 " + r.latest.outputTokens + " tok · 生成 " + genS + "s · ⏱ " +
+        new Date(r.latest.completedAt).toLocaleTimeString("zh-CN", { hour12: false });
+      if (r.latest.tokPerSec != null) $("out").textContent = r.latest.outputTokens;
+    }
+    if (r.session) {
+      setNum("avg", r.session.avg, 1);
+      setNum("max", r.session.max, 1);
+      $("cnt").textContent = r.session.samples;
+      $("tokrange").textContent = "会话 " + (r.sessionId || "").slice(0, 13) + "…";
+    }
+    // 直接渲染服务端返回的完整历史(刷新/重开页面不丢,数据库为准)
+    if (r.history) {
+      tokHist.length = 0;
+      for (const h of r.history) tokHist.push(h.tokPerSec ?? null);
+      drawLine($("tokChart"), [tokHist], ["#2fd67b"], { fill: true, zero: true, avgLine: true });
+      $("tokrange").textContent = tokHist.length ? ("近 " + tokHist.length + " 次") : "";
+    }
+  } catch {
+    $("livendot").classList.add("err");
+  }
+}
+
+async function tickSys() {
+  try {
+    const res = await fetch("/api/metrics", { cache: "no-store" });
+    if (!res.ok) return;
+    const m = await res.json();
+    setNum("cpu", m.system.cpuPercent, 1);
+    $("cores").textContent = m.system.cpuCores;
+    setBar("cpubar", m.system.cpuPercent);
+    $("mem").textContent = (m.system.memUsedMB / 1024).toFixed(1) + " / " + (m.system.memTotalMB / 1024).toFixed(1) + " GB";
+    setNum("mempct", m.system.memPercent, 1); setBar("membar", m.system.memPercent);
+    $("uptime").textContent = m.system.hostUptimeHours + " 小时";
+    $("platform").textContent = m.system.platform;
+  } catch {}
+}
+
+function setBar(id, pct) {
+  const bar = $(id);
+  const v = Math.min(100, Math.max(0, pct ?? 0));
+  bar.firstElementChild.style.width = v + "%";
+  bar.className = "bar" + (v > 85 ? " crit" : v > 65 ? " warn" : "");
+}
+
+function clock() {
+  $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+}
+
+window.addEventListener("resize", () => drawLine($("tokChart"), [tokHist], ["#2fd67b"], { fill: true, zero: true, avgLine: true }));
+
+clock(); tickTok(); tickSys();
+setInterval(clock, 1000);
+setInterval(tickTok, 1000);
+setInterval(tickSys, 2000);
+</script>
+</body>
+</html>

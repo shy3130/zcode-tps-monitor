@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "tps-monitor": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "${ZCODE_PLUGIN_ROOT}/mcp/tps-server.mjs"
+      ],
+      "env": {
+        "TPS_URL": "${user_config.metrics_url}"
+      },
+      "enabled": true,
+      "timeoutMs": 30000
+    }
+  }
+}

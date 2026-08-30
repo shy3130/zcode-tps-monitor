@@ -1,0 +1,26 @@
+{
+  "name": "tps-monitor",
+  "version": "0.6.0",
+  "description": "TPS throughput monitor: /tps command and MCP tools to snapshot TPS, latency percentiles, error rate, and local system resources. Supports a real metrics URL or built-in demo data.",
+  "author": {
+    "name": "Administrator"
+  },
+  "license": "MIT",
+  "keywords": [
+    "tps",
+    "monitor",
+    "metrics",
+    "performance",
+    "throughput"
+  ],
+  "commands": "commands",
+  "skills": "skills",
+  "userConfig": {
+    "metrics_url": {
+      "title": "Metrics URL",
+      "description": "HTTP endpoint returning JSON with a tps/qps field; empty = demo data.",
+      "type": "string",
+      "required": false
+    }
+  }
+}

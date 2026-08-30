@@ -1,0 +1,25 @@
+{
+  "name": "tps-local-marketplace",
+  "description": "本地插件市场:自建 ZCode 插件(吞吐监控等)。",
+  "owner": {
+    "name": "Administrator"
+  },
+  "plugins": [
+    {
+      "name": "tps-monitor",
+      "source": "./plugins/tps-monitor",
+      "description": "TPS 吞吐监控:实时监控大屏 + /tps 命令 + MCP 工具,查看 TPS、延迟分位数、错误率及本机资源;支持配置真实指标接口或使用演示数据。",
+      "version": "0.6.0",
+      "author": {
+        "name": "Administrator"
+      },
+      "category": "monitoring",
+      "keywords": [
+        "tps",
+        "monitor",
+        "metrics",
+        "performance"
+      ]
+    }
+  ]
+}
