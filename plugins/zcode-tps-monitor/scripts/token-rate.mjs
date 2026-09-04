@@ -105,10 +105,17 @@ function query(sessionId) {
   }
 }
 
-function fmtK(n) {
-  if (n >= 10000) return Math.round(n / 1000) + "k";
+// 紧凑单位(注入行等需一眼扫读处):千以下原始、千~万一位小数 k、万~百万取整 k、百万以上一位小数 M
+function fmtCompact(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 10_000) return Math.round(n / 1000) + "k";
   if (n >= 1000) return (n / 1000).toFixed(1) + "k";
   return String(n);
+}
+
+// 千分位精确数字(每轮输出与 CLI 明细):2,762
+function fmtNum(n) {
+  return n.toLocaleString("en-US");
 }
 
 function formatLine(r) {
@@ -119,11 +126,11 @@ function formatLine(r) {
     // 采样发生在发送消息的瞬间,头条描述的是上一条已完成回复
     `⚡ ${l.tokPerSec ?? "-"} tok/s(上轮)`,
     `首字 ${l.ttftMs != null ? (l.ttftMs / 1000).toFixed(1) : "-"}s`,
-    `输出 ${l.outputTokens}${l.reasoningTokens ? `(+${l.reasoningTokens} 思考)` : ""} tok / 生成 ${l.genMs != null ? (l.genMs / 1000).toFixed(1) : "-"}s`,
+    `输出 ${fmtNum(l.outputTokens)}${l.reasoningTokens ? `(+${fmtNum(l.reasoningTokens)} 思考)` : ""} tok / 生成 ${l.genMs != null ? (l.genMs / 1000).toFixed(1) : "-"}s`,
   ];
   if (r.session) {
     parts.push(`近${r.session.samples}次均 ${r.session.avg} / 峰 ${r.session.max}`);
-    parts.push(`累计 ${fmtK(r.session.totalOutput + r.session.totalReasoning)} tok`);
+    parts.push(`累计 ${fmtCompact(r.session.totalOutput + r.session.totalReasoning)} tok`);
   }
   parts.push(`⏱ ${t}`);
   return parts.join(" · ");
@@ -140,9 +147,10 @@ if (process.argv[1] && process.argv[1].endsWith("token-rate.mjs")) {
     const s = r.session;
     console.log(formatLine(r));
     if (s) {
-      console.log(`会话累计:输出 ${s.totalOutput}${s.totalReasoning ? `(+${s.totalReasoning} 思考)` : ""} tok · 输入 ${fmtK(s.totalInput)} tok(其中缓存读 ${fmtK(s.totalCacheRead)}) · 请求 ${s.requests} 次`);
+      // CLI 明细面向细读,全部千分位精确数字
+      console.log(`会话累计:输出 ${fmtNum(s.totalOutput)}${s.totalReasoning ? `(+${fmtNum(s.totalReasoning)} 思考)` : ""} tok · 输入 ${fmtNum(s.totalInput)} tok(其中缓存读 ${fmtNum(s.totalCacheRead)}) · 请求 ${s.requests} 次`);
     }
   }
 }
 
-export { query, formatLine };
+export { query, formatLine, fmtCompact, fmtNum };

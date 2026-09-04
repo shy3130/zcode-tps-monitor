@@ -41,7 +41,24 @@ const { DatabaseSync } = await import("node:sqlite");
   db.close();
 }
 
-const { query, formatLine } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "token-rate.mjs")).href);
+const { query, formatLine, fmtCompact, fmtNum } = await import(pathToFileURL(path.join(PLUGIN, "scripts", "token-rate.mjs")).href);
+
+// --- 换算规则 ---
+test("fmtCompact 分档:<1k 原始、1k~1w 一位小数、1w~100w 取整 k、≥100w 一位小数 M", () => {
+  assert.equal(fmtCompact(999), "999");
+  assert.equal(fmtCompact(1600), "1.6k");
+  assert.equal(fmtCompact(9800), "9.8k");
+  assert.equal(fmtCompact(51300), "51k");
+  assert.equal(fmtCompact(128600), "129k");
+  assert.equal(fmtCompact(73818000), "73.8M");
+  assert.equal(fmtCompact(2000000), "2.0M");
+});
+
+test("fmtNum 千分位", () => {
+  assert.equal(fmtNum(2762), "2,762");
+  assert.equal(fmtNum(128643), "128,643");
+  assert.equal(fmtNum(275), "275");
+});
 
 test("速率含思考 token:600 = (500+100)/1s", () => {
   const r = query("s1");

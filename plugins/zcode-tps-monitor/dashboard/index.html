@@ -180,6 +180,8 @@ function drawLine(canvas, series, colors, opts = {}) {
 
 // --- Token 速率(真实数据) ---
 const tokHist = [];
+// 千分位:与 CLI 的 fmtNum 同规则
+const fmtNum = (n) => n.toLocaleString("en-US");
 
 async function tickTok() {
   try {
@@ -192,9 +194,9 @@ async function tickTok() {
       setNum("ttft", r.latest.ttftMs != null ? r.latest.ttftMs / 1000 : null, 1);
       const genS = r.latest.genMs != null ? (r.latest.genMs / 1000).toFixed(1) : "-";
       $("tokmodel").textContent = "模型 " + (r.latest.model || "--");
-      $("tokinfo").textContent = "输出 " + r.latest.outputTokens + " tok · 生成 " + genS + "s · ⏱ " +
+      $("tokinfo").textContent = "输出 " + fmtNum(r.latest.outputTokens) + " tok · 生成 " + genS + "s · ⏱ " +
         new Date(r.latest.completedAt).toLocaleTimeString("zh-CN", { hour12: false });
-      if (r.latest.tokPerSec != null) $("out").textContent = r.latest.outputTokens;
+      if (r.latest.tokPerSec != null) $("out").textContent = fmtNum(r.latest.outputTokens);
     }
     if (r.session) {
       setNum("avg", r.session.avg, 1);

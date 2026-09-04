@@ -9,7 +9,7 @@
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
       "description": "TPS 吞吐监控:实时监控大屏 + /tps 命令 + MCP 工具,查看 TPS、延迟分位数、错误率及本机资源;支持配置真实指标接口或使用演示数据。",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "author": {
         "name": "Administrator"
       },
