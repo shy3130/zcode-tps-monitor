@@ -191,7 +191,7 @@ const fmtNum = (n) => n.toLocaleString("en-US");
 
 async function tickTok() {
   try {
-    const res = await fetch("/api/token-rate", { cache: "no-store" });
+    const res = await fetch("/api/token-rate", { cache: "no-store", headers: { "X-Tps-Token": window.__TPS_TOKEN__ || "" } });
     if (!res.ok) return;
     const r = await res.json();
     $("livendot").classList.remove("err");
@@ -234,7 +234,7 @@ async function tickTok() {
 
 async function tickSys() {
   try {
-    const res = await fetch("/api/metrics", { cache: "no-store" });
+    const res = await fetch("/api/metrics", { cache: "no-store", headers: { "X-Tps-Token": window.__TPS_TOKEN__ || "" } });
     if (!res.ok) return;
     const m = await res.json();
     setNum("cpu", m.system.cpuPercent, 1);
