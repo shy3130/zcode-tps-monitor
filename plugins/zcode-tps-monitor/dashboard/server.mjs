@@ -7,9 +7,13 @@ import http from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { snapshot } from "../scripts/lib/collect-core.mjs";
 import { query as tokenRateQuery, queryTurn as tokenRateTurnQuery } from "../scripts/token-rate.mjs";
+
+// 会话令牌:每次启动随机生成,仅注入到本机served的页面中,防止同机其它用户/进程未经授权访问 /api/* 接口(CWE-287)
+const AUTH_TOKEN = crypto.randomBytes(24).toString("hex");
 
 // 状态文件:钩子(SessionStart/UserPromptSubmit)记录"用户最后所处的会话"
 const STATE_FILE = path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json");
@@ -32,7 +36,9 @@ const HOST = "127.0.0.1";
 const idleIdx = args.indexOf("--idle-exit");
 const IDLE_EXIT_MIN = idleIdx !== -1 ? Number(args[idleIdx + 1]) : 180;
 const here = path.dirname(fileURLToPath(import.meta.url));
-const indexHtml = fs.readFileSync(path.join(here, "index.html"), "utf8");
+const indexHtml = fs
+  .readFileSync(path.join(here, "index.html"), "utf8")
+  .replace("</head>", `<script>window.__TPS_TOKEN__=${JSON.stringify(AUTH_TOKEN)};</script></head>`);
 
 // PID 文件:供 /tps-doctor 探测运行状态并提供停止方式
 const PID_FILE = path.join(os.homedir(), ".zcode", "tps-monitor.dashboard.pid");
@@ -60,6 +66,13 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(indexHtml);
     return;
+  }
+  if (req.url.startsWith("/api/metrics") || req.url.startsWith("/api/token-rate")) {
+    if (req.headers["x-tps-token"] !== AUTH_TOKEN) {
+      res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
   }
   if (req.url.startsWith("/api/metrics")) {
     try {
