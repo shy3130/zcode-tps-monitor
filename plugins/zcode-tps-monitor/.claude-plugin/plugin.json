@@ -1,7 +1,7 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.8.2",
-  "description": "TPS throughput monitor: /tps command and MCP tools to snapshot TPS, latency percentiles, error rate, and local system resources. Supports a real metrics URL or built-in demo data.",
+  "version": "0.8.3",
+  "description": "Token rate monitor: per-question instant tokens/sec from the ZCode usage DB, shown at the end of each tool-using reply; /tps command, MCP tools, and a real-time dashboard. Supports a real metrics URL or built-in demo data for service TPS.",
   "author": {
     "name": "Administrator"
   },

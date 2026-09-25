@@ -84,6 +84,12 @@
       <div class="value"><span id="ttft">--</span><span class="unit">s</span></div>
       <div class="delta" id="ttftinfo">从发出消息到模型开始出字</div>
     </div>
+    <div class="card">
+      <div class="label">最新一问即时速率(本问)</div>
+      <div class="value"><span id="turnToks">--</span><span class="unit">tok/s</span></div>
+      <div class="delta model" id="turnState">等待数据…</div>
+      <div class="delta" id="turnInfo">提问触发的轮次进行中时每秒更新</div>
+    </div>
   </div>
 
   <div class="mini">
@@ -203,6 +209,16 @@ async function tickTok() {
       setNum("max", r.session.max, 1);
       $("cnt").textContent = r.session.samples;
       $("tokrange").textContent = "会话 " + (r.sessionId || "").slice(0, 13) + "…";
+    }
+    // 最新一问(本问):usage 库按 turn 逐段实时入库,生成期间每秒都能看到速率爬升
+    if (r.turn && r.turn.tokPerSec != null) {
+      setNum("turnToks", r.turn.tokPerSec, 1);
+      const active = Date.now() - r.turn.lastAt < 120000;
+      $("turnState").textContent = active ? "● 进行中 / 刚结束" : "最近一问";
+      const tokTxt = fmtNum(r.turn.totalOutput) +
+        (r.turn.totalReasoning ? " + " + fmtNum(r.turn.totalReasoning) + " 思考" : "");
+      $("turnInfo").textContent = "输出 " + tokTxt + " tok · " + r.turn.requests + " 段 · ⏱ " +
+        new Date(r.turn.lastAt).toLocaleTimeString("zh-CN", { hour12: false });
     }
     // 直接渲染服务端返回的完整历史(刷新/重开页面不丢,数据库为准)
     if (r.history) {

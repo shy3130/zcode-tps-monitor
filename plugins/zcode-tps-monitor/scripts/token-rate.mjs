@@ -2,10 +2,14 @@
 // Token 输出速率:从 ZCode 自身的 usage 数据库(model_usage 表)计算真实的模型生成速率。
 // 用法:
 //   node token-rate.mjs            最近一次请求 + 会话统计(人类可读)
-//   node token-rate.mjs --turn     本轮(刚结束的用户轮次)即时速率
+//   node token-rate.mjs --turn     最新一问(本次提问触发的轮次)即时速率
+//   node token-rate.mjs --turn --current
+//                                  同上,但本问尚无入库数据时输出为空(--current 守卫,
+//                                  绝不把上一轮数据当作本问返回)
 //   node token-rate.mjs --json     JSON 输出
 //   ZCODE_SESSION_ID=xxx node ...  只统计指定会话
 //   ZCODE_USAGE_DB=/path/db.sqlite 指定数据库路径(默认按用户主目录解析)
+//   TPS_MONITOR_STATE_FILE=/path   指定钩子状态文件(默认 ~/.zcode/tps-monitor.last-session.json)
 // 只读打开 WAL 数据库,不影响运行中的客户端。
 
 // 抑制 node:sqlite 的 ExperimentalWarning 噪音:必须在动态 import 之前接管 warning 通道
@@ -27,21 +31,40 @@ const HIST = Number(process.env.TOKEN_RATE_HIST) || 60;         // 曲线历史�
 const MIN_GEN_MS = Number(process.env.TOKEN_RATE_MIN_MS) || 200;      // 有效样本:最短生成耗时
 const MAX_GEN_MS = Number(process.env.TOKEN_RATE_MAX_MS) || 3_600_000; // 有效样本:最长生成耗时(1h)
 
+// 钩子状态文件:记录"用户最后所处的会话"与最近提问时刻(--current 守卫依赖 ts)
+const STATE_FILE =
+  process.env.TPS_MONITOR_STATE_FILE ||
+  path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json");
+const STATE_TTL_MS = 7 * 24 * 3600 * 1000; // 过旧的状态文件视为失效(与大屏跟随逻辑一致)
+
+function readState() {
+  try {
+    const st = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+    if (!st || !Number.isFinite(st.ts) || Date.now() - st.ts > STATE_TTL_MS) return null;
+    return st;
+  } catch {
+    return null;
+  }
+}
+
 function openDb() {
   return new DatabaseSync(DB_PATH, { readOnly: true });
 }
 
-// 未显式指定会话时,取最近一次完成请求所属的会话 = 当前会话
+// 未显式指定会话时的解析顺序:状态文件里"用户最后所处的会话"(切会话即跟随)→
+// 全局最近一次完成请求所属的会话
+function fallbackSessionId(db) {
+  const st = readState();
+  if (st && st.sessionId) return st.sessionId;
+  const row = db
+    .prepare("SELECT session_id FROM model_usage WHERE status = 'completed' ORDER BY completed_at DESC LIMIT 1")
+    .get();
+  return row ? row.session_id : null;
+}
+
 function resolveSession(db, sessionId) {
-  let sid = sessionId;
-  const scoped = sessionId ? "explicit" : "auto";
-  if (!sid) {
-    const row = db
-      .prepare("SELECT session_id FROM model_usage WHERE status = 'completed' ORDER BY completed_at DESC LIMIT 1")
-      .get();
-    sid = row ? row.session_id : null;
-  }
-  return { sid, scoped };
+  const sid = sessionId || fallbackSessionId(db);
+  return { sid, scoped: sessionId ? "explicit" : "auto" };
 }
 
 // 主对话优先的过滤范围:有 main_turn 数据时只统计 main_turn,否则回退为全部请求
@@ -123,8 +146,9 @@ function query(sessionId) {
 }
 
 // 本轮 = 会话里最新的 turn_id(一次用户消息触发的全部请求共享同一个 turn_id,
-// 含"模型→工具→模型"的每一段)。Stop 钩子在回复刚结束时调用,此时本轮已全部入库,
-// 因此能给出真正的"本轮即时速率";而 prompt-submit 时刻本轮尚未发生,只能看到上一轮。
+// 含"模型→工具→模型"的每一段)。回复收尾时(模型运行 --turn --current)本轮已完成
+// 的各段均已实时入库,因此能给出真正的"本问即时速率";而 prompt-submit 时刻本问
+// 尚未发生,只能看到上一轮。
 function latestTurnId(db, sid) {
   try {
     const row = db
@@ -139,26 +163,14 @@ function latestTurnId(db, sid) {
 // 最近一次用户提问的时间戳(prompt-submit 钩子写入);--current 守卫用:
 // 最新 turn 的所有行都早于它,说明本问尚未产生任何模型请求(纯问答轮),不得当作"本问"统计。
 function lastPromptTs() {
-  try {
-    const st = JSON.parse(
-      fs.readFileSync(path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json"), "utf8")
-    );
-    return Number.isFinite(st.ts) ? st.ts : null;
-  } catch {
-    return null;
-  }
+  const st = readState();
+  return st && Number.isFinite(st.ts) ? st.ts : null;
 }
 
 function queryTurn(sessionId, opts = {}) {
   const db = openDb();
   try {
-    let sid = sessionId;
-    if (!sid) {
-      const row = db
-        .prepare("SELECT session_id FROM model_usage WHERE status = 'completed' ORDER BY completed_at DESC LIMIT 1")
-        .get();
-      sid = row ? row.session_id : null;
-    }
+    const sid = sessionId || fallbackSessionId(db);
     if (!sid) return { sessionId: null, turnId: null, turn: null, session: null };
     const { scopeSql, args } = scopeFor(db, sid);
     const winRows = db.prepare(scopeSql + " ORDER BY completed_at DESC LIMIT ?").all(...args, N);
@@ -235,7 +247,7 @@ function formatLine(r) {
   return parts.join(" · ");
 }
 
-// Stop 钩子用:回复刚结束时的本轮即时行
+// 本问统计行(回复收尾自测、Stop 钩子、监控大屏共用)
 function formatTurnLine(r) {
   const t = r.turn;
   if (!t) return "暂无本轮请求记录";

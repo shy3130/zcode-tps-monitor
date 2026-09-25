@@ -20,6 +20,8 @@ process.env.TOKEN_RATE_WINDOW = "5";
 process.env.TOKEN_RATE_HIST = "10";
 process.env.TOKEN_RATE_MIN_MS = "100";
 process.env.TOKEN_RATE_MAX_MS = "60000";
+// --current 守卫读取的钩子状态文件:指向夹具,避免读到真实 ~/.zcode
+process.env.TPS_MONITOR_STATE_FILE = path.join(tmp, "state.json");
 
 const { DatabaseSync } = await import("node:sqlite");
 {
@@ -31,14 +33,18 @@ const { DatabaseSync } = await import("node:sqlite");
   const ins = db.prepare(
     "INSERT INTO model_usage VALUES (?, 'completed', 'main_turn', 'test-model', ?, ?, 120000, 118000, ?, ?, ?, ?)"
   );
+  // 时间戳用真实纪元毫秒(--current 守卫与提问时刻比较,必须同量纲)
+  const T0 = Date.now() - 60000;
   // 速率 = (output + reasoning) / genMs;turn_id 按用户轮次分组,本轮 = 最新 turn_id
-  ins.run("s1", 500, 100, 1000, 2000, 800, "t_old");  // gen 1000ms → 600 tok/s(验证思考 token 计入分子)
-  ins.run("s1", 900, 0, 2000, 5000, 700, "t_old");    // gen 3000ms → 300 tok/s
-  ins.run("s1", 80, 0, 6500, 7000, 450, "t_new");     // gen 500ms  → 160 tok/s(本轮第 1 段)
-  ins.run("s1", 20, 0, 7550, 7600, 100, "t_new");     // gen 50ms < MIN → 无速率,但计入累计
-  ins.run("s1", 220, 0, 9000, 10100, 600, "t_new");   // gen 1100ms → 200 tok/s(本轮第 2 段 = 会话最新)
+  ins.run("s1", 500, 100, T0 + 1000, T0 + 2000, 800, "t_old");  // gen 1000ms → 600 tok/s(验证思考 token 计入分子)
+  ins.run("s1", 900, 0, T0 + 2000, T0 + 5000, 700, "t_old");    // gen 3000ms → 300 tok/s
+  ins.run("s1", 80, 0, T0 + 6500, T0 + 7000, 450, "t_new");     // gen 500ms  → 160 tok/s(本轮第 1 段)
+  ins.run("s1", 20, 0, T0 + 7550, T0 + 7600, 100, "t_new");     // gen 50ms < MIN → 无速率,但计入累计
+  ins.run("s1", 220, 0, T0 + 9000, T0 + 10100, 600, "t_new");   // gen 1100ms → 200 tok/s(本轮第 2 段 = 会话最新)
   // 非 main_turn:主对话存在时必须被排除
-  db.exec("INSERT INTO model_usage VALUES ('s1', 'completed', 'sub', 'test-model', 999, 0, 120000, 118000, 8000, 9000, 500, 't_new')");
+  db.exec(`INSERT INTO model_usage VALUES ('s1', 'completed', 'sub', 'test-model', 999, 0, 120000, 118000, ${T0 + 8000}, ${T0 + 9000}, 500, 't_new')`);
+  // 其他会话里更新的完成请求:验证无显式会话时优先状态文件而非"全局最近"
+  db.exec(`INSERT INTO model_usage VALUES ('s_other', 'completed', 'main_turn', 'test-model', 100, 0, 120000, 118000, ${T0 + 12000}, ${T0 + 13000}, 500, 't_x')`);
   db.close();
 }
 
@@ -113,6 +119,37 @@ test("本轮文案:本轮标注、段数峰值、会话累计", () => {
   assert.match(line, /输出 320 tok \/ 生成/);
   assert.match(line, /3 段 \/ 峰 200/);
   assert.match(line, /累计 1\.8k tok/);
+});
+
+test("--current 守卫:提问时刻晚于本轮全部数据 → 不返回本问(绝不拿上一轮冒充)", () => {
+  fs.writeFileSync(
+    process.env.TPS_MONITOR_STATE_FILE,
+    JSON.stringify({ sessionId: "s1", ts: Date.now() + 60000, source: "test" })
+  );
+  const r = queryTurn("s1", { current: true });
+  assert.equal(r.noCurrentTurnData, true);
+  assert.equal(r.turn, null);
+  assert.equal(formatTurnLine(r), "暂无本轮请求记录");
+});
+
+test("--current 守卫:本问已有入库数据 → 正常返回", () => {
+  fs.writeFileSync(
+    process.env.TPS_MONITOR_STATE_FILE,
+    JSON.stringify({ sessionId: "s1", ts: Date.now() - 55000, source: "test" })
+  );
+  const r = queryTurn("s1", { current: true });
+  assert.equal(r.noCurrentTurnData, undefined);
+  assert.equal(r.turn.tokPerSec, 187.5);
+});
+
+test("无显式会话时优先状态文件里的会话(而非全局最近完成请求)", () => {
+  fs.writeFileSync(
+    process.env.TPS_MONITOR_STATE_FILE,
+    JSON.stringify({ sessionId: "s1", ts: Date.now(), source: "test" })
+  );
+  // 全局最近完成请求属于 s_other,状态文件指向 s1 → 必须选 s1
+  assert.equal(queryTurn(null).sessionId, "s1");
+  assert.equal(query(null).sessionId, "s1");
 });
 
 test("旧库无 turn_id 列:本轮查询优雅降级不抛错", async () => {

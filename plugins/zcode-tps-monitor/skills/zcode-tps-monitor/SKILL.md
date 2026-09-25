@@ -14,18 +14,20 @@ description: Token 输出速率与吞吐监控。当用户询问 token 速率、
 
 1. Token 速率(推荐,真实数据):
    ```
-   node <插件目录>/scripts/token-rate.mjs           # 人类可读
-   node <插件目录>/scripts/token-rate.mjs --json    # JSON
+   node <插件目录>/scripts/token-rate.mjs                  # 最近一次请求 + 会话统计
+   node <插件目录>/scripts/token-rate.mjs --turn --current # 最新一问(本问)即时统计
+   node <插件目录>/scripts/token-rate.mjs --json           # JSON
    ```
    可设 `ZCODE_SESSION_ID` 环境变量只统计当前会话;钩子已自动这么做。
 2. 业务 TPS:MCP 工具 `tps_snapshot`/`tps_watch`,或 `node <插件目录>/scripts/collect.mjs [--watch N]`。
-3. 实时大屏(浏览器,含 token 速率面板):
+3. 实时大屏(浏览器,含 token 速率面板与本问进行中速率):
    ```
    node <插件目录>/dashboard/server.mjs   # http://127.0.0.1:7423
    ```
 
 ## 展示规范
 
-- 中文回复,指标用表格或列表;回复末尾附 📊 指标行(若上下文有【token 速率】注入,原样附上)。
-- token 速率需注明模型名;TTFT 明显偏高(>5s)或速率骤降时可一句简评。
+- 中文回复,指标用表格或列表;token 速率需注明模型名;TTFT 明显偏高(>5s)或速率骤降时可一句简评。
+- 若上下文含【本轮统计指令】:按指令在回复收尾时运行脚本,把输出行原样放入引用块贴在回复最末尾;脚本没有输出则不显示任何统计行。
+- 上下文里【内部背景·勿展示】的历史速率行仅供了解背景,绝不展示给用户。
 - demo 模式的业务 TPS 要主动标注,并提示可配置 `metrics_url`。

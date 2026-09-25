@@ -15,7 +15,8 @@ process.on("warning", () => {});
 const HOME = os.homedir();
 const DB_PATH =
   process.env.ZCODE_USAGE_DB || path.join(HOME, ".zcode", "cli", "db", "db.sqlite");
-const STATE_FILE = path.join(HOME, ".zcode", "tps-monitor.last-session.json");
+const STATE_FILE =
+  process.env.TPS_MONITOR_STATE_FILE || path.join(HOME, ".zcode", "tps-monitor.last-session.json");
 const CONFIG_FILE = path.join(HOME, ".zcode", "tps-monitor.config.json");
 const PID_FILE = path.join(HOME, ".zcode", "tps-monitor.dashboard.pid");
 
@@ -91,11 +92,15 @@ function stateFileCheck() {
   try {
     const st = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
     const age = Math.round((Date.now() - (st.ts || 0)) / 60000);
+    // ts 是「本问统计」--current 守卫的依据:缺失则守卫退化为放行,可能显示旧数据
+    const hasTs = Number.isFinite(st.ts);
     return {
       name: "会话状态文件",
-      ok: true,
-      detail: `存在,sessionId=${String(st.sessionId).slice(0, 8)}…,更新于 ${age} 分钟前`,
-      hint: null,
+      ok: hasTs,
+      detail:
+        `存在,sessionId=${String(st.sessionId).slice(0, 8)}…,更新于 ${age} 分钟前` +
+        (hasTs ? "" : ",但缺少提问时间戳"),
+      hint: hasTs ? null : "状态文件由旧版本钩子写入;重发一条消息让新钩子重写即可修复",
     };
   } catch {
     return {
@@ -111,10 +116,14 @@ function configCheck() {
   try {
     const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
     const off = cfg.tokenRateLine === false;
+    const deprecated = cfg.stopHookLine !== undefined;
     return {
       name: "配置文件",
       ok: true,
-      detail: off ? "tokenRateLine=false,速率行注入已关闭(属预期)" : "已读取,注入开启",
+      detail:
+        off
+          ? "tokenRateLine=false,速率行注入已关闭(属预期)"
+          : "已读取,注入开启" + (deprecated ? ";stopHookLine 自 0.8.3 起已废弃,可删除" : ""),
       hint: off ? "如需恢复注入,删除该文件或改回 true" : null,
     };
   } catch {

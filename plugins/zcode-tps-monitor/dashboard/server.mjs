@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { snapshot } from "../scripts/lib/collect-core.mjs";
-import { query as tokenRateQuery } from "../scripts/token-rate.mjs";
+import { query as tokenRateQuery, queryTurn as tokenRateTurnQuery } from "../scripts/token-rate.mjs";
 
 // 状态文件:钩子(SessionStart/UserPromptSubmit)记录"用户最后所处的会话"
 const STATE_FILE = path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json");
@@ -77,6 +77,10 @@ const server = http.createServer(async (req, res) => {
       const followed = followedSessionId();
       const r = tokenRateQuery(followed.id);
       r.follow = followed;
+      // 最新一问(可能仍在生成中):usage 库按 turn 逐段实时入库,秒级轮询即可看到当前轮速率
+      try {
+        r.turn = tokenRateTurnQuery(followed.id).turn;
+      } catch {}
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify(r));
     } catch (err) {

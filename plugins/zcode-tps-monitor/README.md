@@ -6,15 +6,16 @@
 
 | 形态 | 入口 | 说明 |
 |---|---|---|
-| 本轮即时速率 | `hooks/stop.mjs` | 回复刚结束(Stop 钩子)时按最新 `turn_id` 圈定本轮全部请求,经 `systemMessage` 直接显示本轮即时速率行;可经 `~/.zcode/tps-monitor.config.json`(`{"stopHookLine": false}`)停用并回到模型转发旧行为 |
-| 上下文注入 | `hooks/prompt-submit.mjs` | 每轮对话读取 ZCode usage 数据库,注入上一轮速率作为模型上下文;`{"tokenRateLine": false}` 可关闭 |
-| 会话提示 | `hooks/session-start.mjs` | 会话启动时记录会话 ID,并注入一行使用提示 |
+| 本问统计 | `hooks/prompt-submit.mjs` + `scripts/token-rate.mjs` | 每轮注入「本问统计指令」:模型在回复收尾时运行 `token-rate.mjs --turn --current`,把本问即时速率行附在回复末尾;`--current` 守卫保证绝不显示上一轮。`{"tokenRateLine": false}` 可整体关闭 |
+| 上下文注入 | `hooks/prompt-submit.mjs` | 每轮读取 ZCode usage 数据库,注入上一轮速率作为模型内部参考(标注勿展示);随 tokenRateLine 一并关闭 |
+| 会话提示 | `hooks/session-start.mjs` | 会话启动时记录会话 ID,并注入使用提示(收尾自测机制说明) |
 | 自检 | `/tps-doctor`(`scripts/doctor.mjs`) | 检查 Node 版本、数据库与表结构、状态/配置文件、大屏进程;`--json` 可编程消费 |
-| 实时大屏 | `dashboard/server.mjs` | 浏览器监控面板,秒级自动刷新:`/zcode-tps-monitor:dashboard` 拉起,或手动运行 |
+| 实时大屏 | `dashboard/server.mjs` | 浏览器监控面板,秒级自动刷新,含「最新一问(本问)」实时卡片;`/zcode-tps-monitor:dashboard` 拉起,或手动运行 |
 | 悬浮条 | `dashboard/overlay.ps1` | Windows 桌面常驻文字悬浮条 |
 | 斜杠命令 | `/zcode-tps-monitor:tps` | 即时快照;`/zcode-tps-monitor:tps 10` 采样观察 10 秒 |
 | 技能 | `zcode-tps-monitor` | 用户询问速率/TPS 相关问题时自动触发 |
 | MCP 工具 | `tps_snapshot` / `tps_watch` | stdio MCP server(`mcp/tps-server.mjs`),供 agent 程序化取数 |
+| Stop 钩子(兼容保留) | `hooks/stop.mjs` | 当前客户端版本不触发 Stop 事件;未来支持后可自动在回复结束瞬间显示本问速率 |
 
 ## 数据源
 
@@ -23,9 +24,9 @@
 由钩子读取 ZCode usage 数据库(`model_usage` 表)计算,可手动验证:
 
 ```bash
-node scripts/token-rate.mjs            # 人类可读
-node scripts/token-rate.mjs --turn     # 本轮(刚结束轮次)即时速率
-node scripts/token-rate.mjs --json     # JSON
+node scripts/token-rate.mjs                  # 最近一次请求 + 会话统计
+node scripts/token-rate.mjs --turn --current # 最新一问(本问)即时统计,本问无数据时不输出
+node scripts/token-rate.mjs --json           # JSON
 ```
 
 可设置 `ZCODE_SESSION_ID` 环境变量只统计当前会话(钩子已自动设置)。
@@ -85,8 +86,8 @@ zcode-tps-monitor/
 ├── skills/zcode-tps-monitor/SKILL.md  # 自动触发技能
 ├── hooks/hooks.json            # 钩子注册(SessionStart + UserPromptSubmit + Stop)
 ├── hooks/session-start.mjs     # 会话启动:记录会话 ID + 使用提示
-├── hooks/prompt-submit.mjs     # 每轮:注入上一轮速率作模型上下文
-├── hooks/stop.mjs              # 回复结束:按 turn_id 圈定本轮,systemMessage 显示即时速率
+├── hooks/prompt-submit.mjs     # 每轮:记录提问时刻 + 注入上一轮参考 + 本问统计指令
+├── hooks/stop.mjs              # 兼容保留:当前客户端不触发 Stop 事件
 ├── mcp/tps-server.mjs          # stdio MCP server
 ├── dashboard/
 │   ├── server.mjs              # HTTP 服务(页面 + /api/metrics)

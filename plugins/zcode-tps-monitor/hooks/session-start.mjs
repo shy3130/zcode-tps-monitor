@@ -6,16 +6,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-function readConfig() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(path.join(os.homedir(), ".zcode", "tps-monitor.config.json"), "utf8")
-    );
-  } catch {
-    return {};
-  }
-}
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const RATE_SCRIPT = path.join(HERE, "..", "scripts", "token-rate.mjs");
 
 const sid = process.env.ZCODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || "";
 if (sid) {
@@ -29,12 +23,16 @@ if (sid) {
   } catch {}
 }
 
-// 默认:本轮即时速率行由 Stop 钩子直接显示给用户,模型无需转发;
-// stopHookLine===false 时回到旧行为,才需要模型在回复末尾转发(上轮数据)。
-const legacyQuote = readConfig().stopHookLine === false;
-const hint = legacyQuote
-  ? "[zcode-tps-monitor] 已就绪。每轮用户消息都会注入【token 速率】行(真实,来自 usage 库;显示的是上一轮),请在每条回复末尾原样附上「⚡」开头的整行。命令:/tps(快照)、/tps-doctor(自检)。大屏:dashboard/server.mjs(http://127.0.0.1:7423);悬浮条(仅 Windows):dashboard/overlay.ps1;关闭速率行:~/.zcode/tps-monitor.config.json → {\"tokenRateLine\":false}。"
-  : "[zcode-tps-monitor] 已就绪。每轮回复结束时,本轮即时 token 速率(真实,来自 usage 库)会由 Stop 钩子自动显示给用户,无需在回复末尾转发速率行。命令:/tps(快照)、/tps-doctor(自检)。大屏:dashboard/server.mjs(http://127.0.0.1:7423);关闭:~/.zcode/tps-monitor.config.json → {\"tokenRateLine\":false} 或 {\"stopHookLine\":false}。";
+// 与 prompt-submit 的「本问统计」机制保持一致:回复收尾时模型自测本问速率
+// (--turn --current 有守卫,纯问答轮不输出、绝不显示上一轮)。
+// 注意不要写"速率会自动显示/无需转发"——当前客户端版本不触发 Stop 钩子,
+// 那类表述会让模型收尾时什么都不做。
+const hint = [
+  `[zcode-tps-monitor] 已就绪。每条回复收尾时(若该回复调用过工具)运行一次:node "${RATE_SCRIPT}" --turn --current,`,
+  "把输出的一行原样放入 Markdown 引用块(行首加「> 」)贴在回复最末尾;脚本没有输出(如纯问答)则不显示任何统计行。",
+  "上下文里【内部背景·勿展示】的历史速率行仅供了解背景,绝不展示给用户。",
+  "命令:/tps(快照)、/tps-doctor(自检)。大屏:node dashboard/server.mjs(http://127.0.0.1:7423);关闭注入:~/.zcode/tps-monitor.config.json → {\"tokenRateLine\":false}。",
+].join("");
 
 process.stdout.write(
   JSON.stringify({

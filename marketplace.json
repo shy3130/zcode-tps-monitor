@@ -8,8 +8,8 @@
     {
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
-      "description": "TPS 吞吐监控:每轮回复结束显示本轮即时速率 + 实时监控大屏 + /tps 命令 + MCP 工具;支持配置真实指标接口或使用演示数据。",
-      "version": "0.8.2",
+      "description": "Token 速率监控:每条调用了工具的回答末尾自动附本问即时速率(绝不显示上一轮) + 实时监控大屏(含本问进行中速率) + /tps 命令 + MCP 工具;支持配置真实指标接口或使用演示数据。",
+      "version": "0.8.3",
       "author": {
         "name": "Administrator"
       },
