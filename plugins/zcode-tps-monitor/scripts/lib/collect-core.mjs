@@ -51,7 +51,30 @@ function deepFind(obj, keys, depth = 0) {
   return undefined;
 }
 
+// 仅允许 http/https,并拒绝内网、回环、链路本地及云元数据地址,降低 SSRF 风险。
+function assertSafeRemoteUrl(url) {
+  const u = new URL(url);
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error(`不支持的协议: ${u.protocol}`);
+  }
+  const host = u.hostname.toLowerCase();
+  const blocked =
+    host === "localhost" ||
+    host === "metadata.google.internal" ||
+    host === "169.254.169.254" ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    host === "::1" ||
+    host.startsWith("fe80:") ||
+    host.startsWith("fc") ||
+    host.startsWith("fd");
+  if (blocked) throw new Error(`禁止访问内部/元数据地址: ${host}`);
+}
+
 export async function fetchRemoteMetrics(url, timeoutMs = 5000) {
+  assertSafeRemoteUrl(url);
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   let res;
