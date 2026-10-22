@@ -2,6 +2,60 @@
 
 项目介绍、安装与使用说明见[仓库首页 README](../../README.md)。本文件面向插件内部结构与开发测试。
 
+## 效果预览
+
+**① 回复结尾统计 · 桌面端**(Gen UI 卡片,自动;一条命令静默落盘):
+
+![回复结尾统计卡片](docs/effect-turn-card.png)
+
+**① 回复结尾统计 · 手机/网页/CLI**(Markdown 单行,自动):
+
+```text
+⚡ **71.2 tok/s** ▂██▁ │ 首字 9.9s │ 输出 15,150 tok · 峰 108.1 │ 累计 273k │ 净 3m26s / 总 2m32s │ ⏱ 09:50:45
+```
+
+**② 多会话实时大屏**(每会话一条泳道,点击聚焦详情):
+
+![多会话监控大屏](docs/effect-dashboard-sessions.png)
+
+**③ 桌面悬浮窗(可选)**:macOS 置顶小窗(常规/单行两种形态)、Windows 文字悬浮条:
+
+| macOS 常驻小窗 | macOS 单行模式(`?style=line`) |
+|---|---|
+| ![macOS 悬浮窗](docs/effect-overlay-macos.png) | ![单行悬浮](docs/effect-overlay-line.png) |
+
+## 配置
+
+全部配置写 `~/.zcode/tps-monitor.config.json`(改完下一轮即生效,无需重装):
+
+```json
+{
+  "tokenRateLine": true,
+  "statsStyle": "card",
+  "statsFormat": {
+    "wrap": "quote",
+    "sep": "bar",
+    "clock": true,
+    "spark": true,
+    "sparkMax": 4
+  },
+  "stopHookLine": false
+}
+```
+
+| 键 | 取值 | 说明 |
+|---|---|---|
+| `tokenRateLine` | `true` / `false` | 总开关:`false` 关闭全部速率注入(含收尾统计) |
+| `statsStyle` | `card` / `line` | 收尾统计形态:桌面端 Gen UI 卡片 / Markdown 单行;不配置时按提交端 `client_mode` 自动(桌面→卡片,手机/网页/CLI→单行) |
+| `statsFormat.wrap` | `quote` / `code` / `plain` / `italic` | 单行包裹:引用块 / 代码胶囊(自动去加粗)/ 裸行 / 斜体 |
+| `statsFormat.sep` | `bar` / `dot` / `mixed` | 单行分隔符:`│` / `·` / 头部`│`其余`·` |
+| `statsFormat.clock` | `true` / `false` | 行尾 ⏱ 时刻 |
+| `statsFormat.spark` | `true` / `false` | 走势条(方块字柱状) |
+| `statsFormat.sparkMax` | 1–8 | 走势条最多段数,默认 4 |
+| `stopHookLine` | `true` / `false` | 实验性:Stop 钩子直显本轮统计(每轮一次);因触发时机不定,默认关 |
+
+单行各字段含义与数字规则(净/总、紧凑单位等)见[仓库 README 的字段表](../../README.md#效果预览)。
+
 ## 能力一览
 
 | 形态 | 入口 | 说明 |
@@ -114,8 +168,10 @@ zcode-tps-monitor/
 │   ├── lib/collect-core.mjs    # 采集核心(CLI/MCP 共用,零依赖)
 │   └── lib/session.mjs         # 会话解析(cwd → session 表)与状态文件读写(共用)
 └── docs/
-    ├── effect-turn-card.png        # 回复结尾统计卡片(桌面端 Gen UI)
-    └── effect-dashboard-sessions.png  # 多会话大屏
+    ├── effect-turn-card.png           # 回复结尾统计卡片(桌面端 Gen UI)
+    ├── effect-dashboard-sessions.png  # 多会话大屏
+    ├── effect-overlay-macos.png       # macOS 悬浮窗(常规)
+    └── effect-overlay-line.png        # macOS 悬浮窗(单行模式)
 ```
 
 ## 修改后生效
