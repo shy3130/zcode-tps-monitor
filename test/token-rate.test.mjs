@@ -112,26 +112,24 @@ test("本轮统计:按最新 turn_id 圈定,多段加权速率", () => {
   assert.equal(r.session.samples, 4);          // 会话累计仍是全会话口径
 });
 
-test("本轮文案:经典版式(· 分隔、(本轮)、生成/总、N 段/峰、累计 tok)", () => {
+test("本轮文案:默认代码风结构(无加粗、走势条、│ 分段、净/总在累计后)", () => {
   const line = formatTurnLine(queryTurn("s1"));
-  assert.match(line, /⚡ 187\.5 tok\/s\(本轮\)/);
+  assert.match(line, /⚡ 187\.5 tok\/s /, "代码风不加粗");
+  assert.ok(!line.includes("**"), "默认 wrap=code 无 **");
   assert.match(line, /首字 0\.5s/);
-  assert.match(line, /输出 320 tok \/ 生成 1\.6s \/ 总 [\d.]+s/);
-  assert.match(line, /3 段 \/ 峰 200/);
-  assert.match(line, /累计 1\.8k tok/);
-  assert.ok(!line.includes("**"), "经典版式无加粗");
-  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(line), "默认无走势条");
-  assert.ok(line.includes(" · "), "· 分隔");
+  assert.match(line, /输出 320 tok · 峰 200/);
+  assert.match(line, /累计 1\.8k .*净 [\d.]+s \/ 总 [\d.]+s/, "净/总在累计之后");
+  assert.match(line, /[▁▂▃▄▅▆▇█]{2,4}/, "默认显示走势条");
+  assert.ok((line.match(/ │ /g) || []).length >= 4, "细竖线分段");
 });
 
-test("统计行可配置:sep 竖线 / spark 开关 / clock 开关", () => {
+test("统计行可配置:quote 恢复加粗 / sep 中点 / spark 开关 / clock 开关", () => {
   const r = queryTurn("s1");
-  const withSpark = { ...r, turn: { ...r.turn, spark: "▂█▇" } };
-  const base = { wrap: "quote", sep: "dot", clock: true, spark: false, sparkMax: 4 };
-  assert.ok(formatTurnLine(withSpark, { ...base, sep: "bar" }).includes(" │ "), "bar=竖线分隔");
-  assert.ok(/[▁▂▃▄▅▆▇█]{2,}/.test(formatTurnLine(withSpark, { ...base, spark: true })), "spark 开启显示走势条");
-  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(formatTurnLine(r, base)), "默认无走势条");
-  assert.ok(!formatTurnLine(withSpark, { ...base, clock: false }).includes("⏱"), "clock=false 去时刻");
+  const base = { wrap: "code", sep: "bar", clock: true, spark: true, sparkMax: 4 };
+  assert.match(formatTurnLine(r, { ...base, wrap: "quote" }), /\*\*187\.5 tok\/s\*\*/, "quote 恢复加粗");
+  assert.ok(formatTurnLine(r, { ...base, sep: "dot" }).includes(" · 首字"), "dot 分隔");
+  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(formatTurnLine(r, { ...base, spark: false })), "spark 关");
+  assert.ok(!formatTurnLine(r, { ...base, clock: false }).includes("⏱"), "clock 关");
 });
 
 test("本轮表格:三行 GFM、八列齐全、速率加粗、无数据时为空串", () => {

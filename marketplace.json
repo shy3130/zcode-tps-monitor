@@ -9,7 +9,7 @@
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
       "description": "Token 速率监控:每条调用了工具的回答末尾自动附本问即时速率(绝不显示上一轮) + 多会话实时大屏(每会话一条泳道) + /tps 命令(含 --sessions 全会话总览) + MCP 工具;支持配置真实指标接口或使用演示数据。",
-      "version": "0.10.1",
+      "version": "0.10.2",
       "author": {
         "name": "Administrator"
       },

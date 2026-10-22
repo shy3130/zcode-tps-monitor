@@ -26,12 +26,13 @@ import path from "node:path";
 import { readGlobalState, globalSessionIdMatchingCwd, resolveSessionIdByCwd, lastPromptTs } from "./lib/session.mjs";
 
 // --- 统计行可配置项(~/.zcode/tps-monitor.config.json 的 "statsFormat" 段)---
-//   wrap: "quote"|"code"|"plain"|"italic"  包裹样式(引用块/行内代码/裸行/斜体)
-//   sep:  "dot"|"bar"                      分隔符(经典 · / 竖线 │)
+//   wrap: "code"|"quote"|"plain"|"italic"  包裹样式(行内代码胶囊/引用块/裸行/斜体;
+//         默认 code——模型按钩子指令把整行包进反引号;代码内不渲染加粗,
+//         wrap=code 时脚本不输出 **)
+//   sep:  "bar"|"dot"                      分隔符(│ / ·)
 //   clock: true|false                      行尾 ⏱ 时刻
-//   spark: true|false                      方块字走势条(默认关,回归经典版式)
+//   spark: true|false                      方块字走势条(默认开)
 //   sparkMax: 1-8                          走势条最多段数
-// 默认即 0.8.5 经典版式(· 分隔、(本轮)、生成/N 段/累计 tok),仅新增"总"用时
 function readStatsConfig() {
   try {
     return JSON.parse(
@@ -44,10 +45,10 @@ function readStatsConfig() {
 function normalizeStatsCfg(raw) {
   const f = raw && typeof raw === "object" && raw.statsFormat ? raw.statsFormat : {};
   return {
-    wrap: ["quote", "code", "plain", "italic"].includes(f.wrap) ? f.wrap : "quote",
-    sep: f.sep === "bar" ? "bar" : "dot",
+    wrap: ["code", "quote", "plain", "italic"].includes(f.wrap) ? f.wrap : "code",
+    sep: f.sep === "dot" ? "dot" : "bar",
     clock: f.clock !== false,
-    spark: f.spark === true,
+    spark: f.spark !== false,
     sparkMax: Math.min(8, Math.max(1, Number(f.sparkMax) || 4)),
   };
 }
@@ -544,23 +545,24 @@ function fmtDur(ms) {
 }
 
 // 本问统计行(回复收尾自测、Stop 钩子共用;可配置项见文件头 statsFormat 说明):
-// 默认 0.8.5 经典版式——⚡ N tok/s(本轮) · 首字 · 输出/生成/总 · N 段/峰 · 累计 · ⏱;
-// 在经典基础上仅新增"总"用时(净生成之外的墙钟)。sep=bar 换竖线,spark 开走势条
+// 结构(0.10.0 版,用户确认保留):速率(+走势) │ 首字 │ 输出·峰 │ 累计 │ 净/总(在累计后)│ ⏱;
+// 默认 wrap=code:整行由模型包进 Markdown 行内代码(代码内不渲染加粗,脚本随之不输出 **)
 function formatTurnLine(r, cfg = STATS_CFG) {
   const t = r.turn;
   if (!t) return "暂无本轮请求记录";
   const time = new Date(t.lastAt).toLocaleTimeString("zh-CN", { hour12: false });
-  const parts = [`⚡ ${t.tokPerSec ?? "-"} tok/s(本轮)`];
-  if (cfg.spark && t.spark) parts.push(t.spark);
-  parts.push(`首字 ${t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) + "s" : "-"}`);
-  parts.push(
-    `输出 ${fmtNum(t.totalOutput)}${t.totalReasoning ? `(+${fmtNum(t.totalReasoning)} 思考)` : ""} tok / 生成 ${t.genMs > 0 ? (t.genMs / 1000).toFixed(1) : "-"}s` +
-      (t.totalMs != null ? ` / 总 ${fmtDur(t.totalMs)}` : "")
-  );
-  if (t.requests > 1) parts.push(`${t.requests} 段 / 峰 ${t.peak ?? "-"}`);
-  if (r.session) parts.push(`累计 ${fmtCompact(r.session.totalOutput + r.session.totalReasoning)} tok`);
-  if (cfg.clock) parts.push(`⏱ ${time}`);
-  return parts.join(cfg.sep === "bar" ? " │ " : " · ");
+  const rate = `${t.tokPerSec ?? "-"} tok/s`;
+  const head = [`⚡ ${cfg.wrap === "code" ? rate : `**${rate}**`}`];
+  if (cfg.spark && t.spark) head.push(t.spark);
+  const seg = [
+    `首字 ${t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) + "s" : "-"}`,
+    `输出 ${fmtNum(t.totalOutput)}${t.totalReasoning ? `(+${fmtNum(t.totalReasoning)} 思考)` : ""} tok${t.requests > 1 ? ` · 峰 ${t.peak ?? "-"}` : ""}`,
+  ];
+  if (r.session) seg.push(`累计 ${fmtCompact(r.session.totalOutput + r.session.totalReasoning)}`);
+  seg.push(`净 ${t.genMs > 0 ? fmtDur(t.genMs) : "-"} / 总 ${t.totalMs != null ? fmtDur(t.totalMs) : "-"}`);
+  if (cfg.clock) seg.push(`⏱ ${time}`);
+  const sepStr = cfg.sep === "dot" ? " · " : " │ ";
+  return head.join(" ") + sepStr + seg.join(sepStr);
 }
 
 // 本问统计表格(回复收尾注入用):GFM 表格在客户端渲染成真表格,比引用块一行字
