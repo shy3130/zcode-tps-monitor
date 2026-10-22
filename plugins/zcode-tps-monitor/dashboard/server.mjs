@@ -9,7 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { snapshot } from "../scripts/lib/collect-core.mjs";
-import { query as tokenRateQuery, queryTurn as tokenRateTurnQuery } from "../scripts/token-rate.mjs";
+import { query as tokenRateQuery, queryTurn as tokenRateTurnQuery, querySessions as tokenRateSessions } from "../scripts/token-rate.mjs";
 
 // 状态文件:钩子(SessionStart/UserPromptSubmit)记录"用户最后所处的会话"
 const STATE_FILE = path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json");
@@ -81,6 +81,19 @@ const server = http.createServer(async (req, res) => {
       try {
         r.turn = tokenRateTurnQuery(followed.id).turn;
       } catch {}
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+      res.end(JSON.stringify(r));
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+  if (req.url.startsWith("/api/sessions")) {
+    // 多会话泳道(0.10.0):每会话 status/turn/latest/曲线/终身累计;增量缓存,
+    // 1s 轮询也只查新增行(详见 token-rate.mjs 的 querySessions)
+    try {
+      const r = tokenRateSessions();
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify(r));
     } catch (err) {

@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.10.0 — 2026-10-21
+
+### 新增:多会话监控大屏(每个会话一条泳道,零悬浮窗)
+- **能力审计先行**:解剖 ZCode 主程序确认全部可用面——钩子事件实际有 **7 种**(`SessionStart`、`UserPromptSubmit`、`PreToolUse`、`PermissionRequest`、`PostToolUse`、`PostToolUseFailure`、`Stop`,比官方文档多两种),钩子输出支持 `additionalContext`/`systemMessage`/`continue`;`statusLine`/`statusBar` **确认不存在**(0 命中)——固定在界面布局上的监控栏依旧无 API,多会话监控的最佳载体是"单个浏览器标签页大屏 + 各会话收尾统计行"。
+- **`--sessions` 多会话查询**(`token-rate.mjs` 新增 `querySessions`):枚举 24h 内有活动的全部会话(session 表窗口内未删除行 + usage 行兜底,旧库无 session 表也能出泳道),每会话给出三态 status(`generating`/`active`/`idle`;近 8s 有完成段或 part 表有 running 工具即生成中)、最新一轮 turn 聚合、latest 段速率、近 40 段速率曲线、**会话终身累计**;口径 main_turn 优先,子代理 actor 会话(无 main 行)自动退回全部行;同目录多会话(主会话 + actor)天然分成各自泳道,互不串数据。CLI:`node token-rate.mjs --sessions`(一行一会话)/`--sessions --json`。
+- **性能:增量缓存 + 查询裁剪**。首轮 GROUP BY 建终身累计 + 拉窗口内整行,此后每轮只拉 `completed_at` 越过水位的新行(回看 10s 容忍乱序提交,按 `(completed_at, rowid)` 水位去重,同刻多段靠 rowid 区分);增量查询去掉 SQL 排序(`model_usage` 无 completed_at 索引,改 JS 端排少量新行);part 表探测(15 万行、data 为大 JSON)限定"近 60 分钟有活动的会话 + 近 10 分钟更新过的 part",`json_extract` 只落在个位数行上。真机实测(35k usage 行 / 155k part 行 / 46 会话):首轮 37ms,稳态 **23–37ms/次**(优化前 105–280ms)。已知边角:首轮恰有同毫秒段跨查询边界提交时累计可能重复计一段;超 10 分钟未更新 time_updated 的超长工具漏判生成中,由其结束后的下一段完成兜底。
+- **大屏页面重设计**(`dashboard/index.html`):深色玻璃质感(深空底色 + 双层嵌套卡片 + 发光状态点),左栏会话泳道(状态点/项目名/迷你走势 SVG/即时速率/累计/时间)、右侧聚焦会话详情(大号速率 + 首字/输出/段数 + 指标芯片 + 全量曲线);点击泳道锁定跟随,亦可"跟随最新"。性能:泳道 DOM 按 sessionId 复用、只改文本与 SVG `d` 属性;全量曲线仅在数据签名变化时重绘;隐藏标签页自动暂停轮询。新端点 `GET /api/sessions`(旧端点保留)。
+- **`/tps` 命令**新增 `--sessions` 总览入口与大屏启动指引。
+- **回复结尾统计升级为会话内卡片(Gen UI),并按客户端自动适配**:钩子从 stdin 入参读 `client_mode`——`desktop` 提问注入"卡片指令"(一条命令 `--turn --current --card --out <可视化目录>/tps-turn.html` 静默落盘单张主题化卡片:大号速率 + spark 走势竖条 + 首字/输出/累计/净·总/近段均/时刻,全静态无脚本);`mobile`/`web`/`cli`/未知(手机与网页端不渲染 Gen UI,只显示"请在桌面端查看"占位)注入"单行指令"(Markdown,任何客户端可见)。可用 `{"statsStyle":"card"|"line"}` 强制指定;入参字段留档于 `~/.zcode/tps-monitor.hook-debug.log`。单行样式同步重做:细竖线 `│` 分段、速率整段加粗、峰值并入输出段、净/总与累计自动换算(秒/分/时,k/M);`--table` 保留为 CLI 可选表格输出。
+- **统计行全面可配置**(`~/.zcode/tps-monitor.config.json` 新增 `statsFormat` 段,测试可用 `TPS_MONITOR_CONFIG` 覆盖路径):`wrap` 包裹样式(quote 引用块/code 行内代码/plain 裸行/italic 斜体,code 风脚本自动去 `**` 加粗——代码内星号不渲染)、`sep` 分隔符(bar `│` / dot `·` / mixed 头部`│`其余`·`)、`clock` 行尾时刻开关、`spark` 走势条开关、`sparkMax` 走势条最多段数(1-8,默认 4)。脚本按配置出裸行内容,钩子按 `wrap` 生成对应包裹指令,两侧读同一份配置。
+- 新增 5 个测试(多会话夹具):枚举与排序、同目录主会话/actor 隔离与口径、三态 status(含 part 表 running 判生成中、新会话空泳道)、增量缓存二次调用、旧库无 session 表(CLI 子进程);全量 33 个测试通过。
+
+## 0.9.0 — 2026-10-21
+
+### 修复:并发会话串数据(「本轮」统计张冠李戴)
+- **实测事故**:全局状态文件 `~/.zcode/tps-monitor.last-session.json` 被所有会话共享,任何会话的 SessionStart/UserPromptSubmit/Stop 钩子都会覆写其 sessionId——amber 目录的会话在 15:57:25 覆写后,Project 目录会话的「本轮」统计显示成了 amber 的数据(累计 1.6M tok 张冠李戴)。`--current` 守卫防不住:另一会话的请求确实发生在本问提问时刻之后。
+- **状态文件拆分**:新增按会话分文件 `~/.zcode/tps-monitor.sessions/<id>.json`;prompt-submit/session-start 写「分文件 + 全局」,Stop 只更新自己会话的分文件、**绝不写全局**。`TPS_MONITOR_STATE_FILE` 覆盖语义保留(分文件目录默认与其同目录,`TPS_MONITOR_SESSIONS_DIR` 可显式指定)。
+- **会话解析新顺序**:未显式指定会话时:环境变量 → 全局状态文件里 cwd 与 `process.cwd()` 一致的显式记录 → 按 `process.cwd()` 查 usage 库 `session` 表(directory 精确匹配、未删除行取 time_updated 最新;只读打开,旧库无该表时静默降级)→ 全局状态文件 → 全局最新完成请求。并发会话工作目录不同,天然隔离;其他会话对全局状态文件的覆写不再串进本会话统计。已在真实库只读验证。
+- **同目录多会话二次事故**(同日复审发现):主会话跑子代理(动态工作流 actor)时,actor 会话与主会话**共享 directory**且 `time_updated` 更新——仅按 cwd 取最新会误选 actor,把 actor 的 450 tok/s 当作主会话「本问」(正确 166.7);守卫因 actor 无分状态文件、回退全局 promptTs 而放行。修复:全局状态文件的显式记录(prompt-submit 由用户本人写入、带 cwd,actor 不触发用户钩子)优先于 time_updated 最新,记录缺失/过期/目录不符时仍走 cwd 解析;悬浮窗服务同步该顺序。真实库只读验证:6 个 actor 会话与主会话共享 `/Users/shy/Project`,修复后正确解析回主会话。
+- **--current 守卫**:提问时刻优先读本会话分状态文件(会话由 cwd 解析),拿不到再回退全局文件——其他会话对全局文件的覆写不再影响判定。
+- 新增 `scripts/lib/session.mjs`(cwd 会话解析、状态文件读写、提问时刻读取;供 token-rate/钩子/悬浮窗服务复用);三个钩子统一改从 stdin payload 取 `session_id` 与 `cwd`(环境变量仍兜底),且 prompt-submit/session-start 的状态文件路径开始尊重 `TPS_MONITOR_STATE_FILE`。
+- 新增 14 个测试(临时 sqlite 夹具):按 cwd 解析(含已删除行让位、旧库无 session 表降级)、cwd 优先于状态文件、Stop 不跨会话覆写(全局文件逐字节不变)、守卫读分文件提问时刻、同目录多会话(全局显式记录优先于 actor / 目录不匹配与 TTL 过期退回 cwd);原用例全部保持通过。
+
+### 优化:回复结尾统计行
+- 头条速率加粗(`**⚡ xx tok/s(本轮)**`):统计行落在回复末尾的 Markdown 引用块里,加粗后更易扫读;配合上述会话归属修复,结尾统计行的数据在多窗口并发下不再串会话、不再凭空消失。
+
+### 新增:macOS 常驻 TPS 悬浮窗
+- **一键启动**:`bash dashboard/overlay/start-macos.sh [面板URL]` —— 自动探测并以 nohup 拉起 17873 端口悬浮窗服务(日志写入 /tmp)→ 面板未编译则现编译 → 前台执行 OverlayPanel;URL 可选,默认 `http://127.0.0.1:17873/`。
+- **置顶小窗**(`OverlayPanel.swift`,swiftc 编译):无边框 NSPanel + `.floating` 层级、跨所有空间、点击不抢焦点;**按住面板左侧可拖动**——WKWebView 的 `mouseDownCanMoveWindow` 为 false(实测),仅靠 `isMovableByWindowBackground` 拖不动,故在 WebView 之上叠一层透明拖动层(`mouseDownCanMoveWindow` 显式返回 true + `performDrag(with:)` 双保险);右侧留 120pt 按钮交互区不覆盖(页面按钮可点击)。支持 `--size 宽x高` 与 `--pos x,y` 参数;编译需 Xcode Command Line Tools(`xcode-select --install`)。
+- **悬浮窗服务**(`overlay/server.mjs`,零依赖):端口 17873(避开大屏 7423);会话按启动时工作目录锁定(`--cwd`,与大屏的全局跟随不同;目录内多会话时优先全局状态文件的 cwd 匹配显式记录)——多窗口并发会话各自独立统计;空闲 8 小时自退(`--idle-exit` 可调,0 = 常驻),PID 文件 `~/.zcode/tps-monitor.overlay.pid` 供 /tps-doctor 探测;路由剥离查询串(带参数 URL 不再 404)。
+- **页面**(`overlay.html`):每秒刷新,状态分 生成中 / 空闲 / 无数据 三态,数据粒度为每段请求完成即刷新;**交互按钮**(右上/单行模式右端):↻ 立即刷新、⏸/▶ 暂停与恢复自动刷新、📈 速率曲线开关(卡片模式,数据取 `/api/live` 新增的 `history` 字段);**单行模式** `?style=line` 配合面板 `--size 620x40` 呈现为细横条,可贴在输入框上方常驻。
+- Windows 桌面悬浮条 `overlay.ps1` 不变,两端各自独立。
+
 ## 0.8.5 — 2026-10-04
 
 ### 修复:Stop 钩子触发导致「本问统计」消失

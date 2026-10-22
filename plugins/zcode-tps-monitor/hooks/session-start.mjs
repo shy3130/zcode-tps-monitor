@@ -1,27 +1,33 @@
 #!/usr/bin/env node
 // SessionStart hook:
-// 1) 记录"用户最后所处的会话"到状态文件(供数据服务锁定当前会话)
+// 1) 记录提问/启动时刻:本会话分状态文件(~/.zcode/tps-monitor.sessions/<id>.json)+
+//    全局状态文件(供数据服务锁定当前会话;读写统一在 scripts/lib/session.mjs)
 // 2) 注入一行使用提示(严格 JSON 输出)
 
-import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { recordPrompt } from "../scripts/lib/session.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RATE_SCRIPT = path.join(HERE, "..", "scripts", "token-rate.mjs");
 
-const sid = process.env.ZCODE_SESSION_ID || process.env.CLAUDE_SESSION_ID || "";
-if (sid) {
-  try {
-    const file = path.join(os.homedir(), ".zcode", "tps-monitor.last-session.json");
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const now = Date.now();
-    fs.writeFileSync(
-      file,
-      JSON.stringify({ sessionId: sid, ts: now, promptTs: now, source: "session-start" })
-    );
-  } catch {}
+// stdin 是钩子入参 JSON(含 session_id 与 cwd);设超时兜底,客户端不给 stdin 也不挂起
+// (钩子预算 3000ms,兜底取 1000ms)
+function readStdin() {
+  return new Promise((resolve) => {
+    let raw = "";
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        resolve(raw);
+      }
+    };
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (c) => (raw += c));
+    process.stdin.on("end", finish);
+    setTimeout(finish, 1000);
+  });
 }
 
 // 与 prompt-submit 的「本问统计」机制保持一致:先自测、再写正文,统计行与正文同条。
@@ -34,11 +40,27 @@ const hint = [
   "命令:/tps(快照)、/tps-doctor(自检)。大屏:node dashboard/server.mjs(http://127.0.0.1:7423);关闭注入:~/.zcode/tps-monitor.config.json → {\"tokenRateLine\":false}。",
 ].join("");
 
-process.stdout.write(
-  JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: "SessionStart",
-      additionalContext: hint,
-    },
-  })
-);
+async function main() {
+  let payload = {};
+  try {
+    payload = JSON.parse((await readStdin()) || "{}");
+  } catch {}
+  const sid =
+    payload.session_id ||
+    process.env.ZCODE_SESSION_ID ||
+    process.env.CLAUDE_SESSION_ID ||
+    "";
+  recordPrompt(sid, payload.cwd, "session-start");
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext: hint,
+      },
+    })
+  );
+}
+
+main()
+  .catch(() => {})
+  .finally(() => process.exit(0));

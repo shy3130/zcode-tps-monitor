@@ -20,9 +20,14 @@ description: Token 输出速率与吞吐监控。当用户询问 token 速率、
    ```
    可设 `ZCODE_SESSION_ID` 环境变量只统计当前会话;钩子已自动这么做。
 2. 业务 TPS:MCP 工具 `tps_snapshot`/`tps_watch`,或 `node <插件目录>/scripts/collect.mjs [--watch N]`。
-3. 实时大屏(浏览器,含 token 速率面板与本问进行中速率):
+3. 实时大屏(浏览器,**多会话泳道**:每个会话一条泳道与三态状态,右侧聚焦会话详情,每秒刷新):
    ```
    node <插件目录>/dashboard/server.mjs   # http://127.0.0.1:7423
+   ```
+   命令行等价总览:`node <插件目录>/scripts/token-rate.mjs --sessions`(一行一会话)。
+4. macOS 悬浮窗(置顶常驻小窗,每秒刷新,生成中/空闲/无数据三态):
+   ```
+   bash <插件目录>/dashboard/overlay/start-macos.sh   # 一键启动,默认 http://127.0.0.1:17873/
    ```
 
 ## 展示规范

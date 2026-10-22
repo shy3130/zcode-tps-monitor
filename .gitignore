@@ -2,3 +2,8 @@
 .DS_Store
 Thumbs.db
 node_modules/
+
+# macOS 悬浮面板编译产物(dashboard/overlay/build-macos.sh)
+dashboard/overlay/build/
+# 同上,通配任意层级(实际生效路径:plugins/zcode-tps-monitor/dashboard/overlay/build/)
+**/dashboard/overlay/build/

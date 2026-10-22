@@ -3,232 +3,451 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Token 输出速率 · ZCode 实时监控</title>
+<title>Token 速率 · 每会话 · ZCode 实时监控</title>
 <style>
+  /* Ethereal Glass:深空底色 + 双圈嵌套(double-bezel)卡片 + 原生高级字体栈。
+     性能铁律:动画只走 transform/opacity;列表容器不加滤镜;隐藏标签页即停轮询。 */
   :root {
-    --bg: #0b1020; --panel: #131a2e; --panel2: #0f1526;
-    --line: #232c47; --text: #e8ecf7; --dim: #8b94ad;
-    --accent: #4da3ff; --green: #2fd67b; --orange: #ffb454; --red: #ff5d73;
+    --bg: #050609;
+    --ink: #f2f5fa; --dim: #9aa4bb; --faint: #5c6578;
+    --em: #34d399; --bl: #60a5fa; --am: #f6c76b; --rd: #f4718a;
+    --hair: rgba(255, 255, 255, .08); --hair2: rgba(255, 255, 255, .14);
+    --core: rgba(255, 255, 255, .035); --core2: rgba(255, 255, 255, .06);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
-    background: var(--bg); color: var(--text);
-    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-    min-height: 100vh; display: flex; flex-direction: column; padding: 16px; gap: 12px;
+    background: var(--bg); color: var(--ink); min-height: 100dvh;
+    font-family: -apple-system, "SF Pro Display", "PingFang SC", "Segoe UI Variable Display", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  header h1 { font-size: 20px; font-weight: 600; letter-spacing: 1px; }
-  .badge {
-    font-size: 12px; padding: 3px 10px; border-radius: 999px;
-    border: 1px solid var(--green); color: var(--green); background: var(--panel2);
+  /* 固定光晕:仅背景层,pointer-events 关闭,不参与重绘热路径 */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(42rem 30rem at 12% -6%, rgba(52, 211, 153, .07), transparent 60%),
+      radial-gradient(46rem 34rem at 96% 108%, rgba(99, 102, 241, .08), transparent 62%);
   }
-  .clock { margin-left: auto; color: var(--dim); font-variant-numeric: tabular-nums; font-size: 14px; }
-  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
-  .dot.err { background: var(--red); }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .shell { position: relative; z-index: 1; max-width: 1480px; margin: 0 auto; padding: clamp(18px, 3vw, 40px); }
 
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 14px 18px; position: relative; overflow: hidden;
-  }
-  .card .label { color: var(--dim); font-size: 13px; }
-  .card .value { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 6px; }
-  .card .unit { font-size: 14px; color: var(--dim); font-weight: 400; margin-left: 4px; }
-  .card .delta { font-size: 12px; margin-top: 6px; color: var(--dim); min-height: 16px; }
-  .card .delta.model { color: var(--text); font-weight: 600; font-size: 13px; }
-  .card::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); }
-  .mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  @media (max-width: 720px) { .mini { grid-template-columns: repeat(2, 1fr); } }
-  .mini .m {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px;
-  }
-  .mini .m .label { color: var(--dim); font-size: 12px; }
-  .mini .m .v { margin-top: 4px; }
-  .mini .m .v .n { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .mini .m .v .u { font-size: 12px; color: var(--dim); font-weight: 400; margin-left: 3px; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+  .reveal { animation: reveal .7s var(--ease) both; animation-delay: var(--d, 0s); }
 
-  .panel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 12px 14px; display: flex; flex-direction: column; flex: 1;
+  /* --- 头部 --- */
+  .top { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+  .eyebrow {
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--em);
+    border: 1px solid rgba(52, 211, 153, .25); background: rgba(52, 211, 153, .06);
+    padding: 5px 12px; border-radius: 999px; margin-bottom: 12px; font-weight: 600;
   }
-  .panel h2 { font-size: 14px; font-weight: 600; color: var(--dim); margin-bottom: 8px; display: flex; gap: 14px; align-items: center; }
-  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--dim); font-weight: 400; margin-left: auto; }
-  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
-  canvas { width: 100%; flex: 1; }
-  .sysrow { display: flex; justify-content: space-between; font-size: 13px; color: var(--dim); margin: 8px 0 4px; }
-  .sysrow b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-  .bar { height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
-  .bar > div { height: 100%; border-radius: 4px; background: var(--accent); transition: width .6s; }
-  .bar.warn > div { background: var(--orange); }
-  .bar.crit > div { background: var(--red); }
-  footer { color: var(--dim); font-size: 12px; text-align: center; }
+  h1 { font-size: clamp(22px, 3vw, 34px); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  h1 .thin { color: var(--dim); font-weight: 500; }
+  .clockbox { margin-left: auto; text-align: right; }
+  .clock { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 15px; color: var(--ink); }
+  .live { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 4px; font-size: 11px; color: var(--dim); }
+  .live .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--em); animation: pulse 2.2s var(--ease) infinite; }
+  .live.err .dot { background: var(--rd); animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(.72); } }
+
+  /* --- 总览条 --- */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0 14px; }
+  .chip { border: 1px solid var(--hair); background: rgba(255, 255, 255, .02); border-radius: 18px; padding: 5px; }
+  .chip .in {
+    background: var(--core); border-radius: 14px; padding: 12px 16px;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, .05);
+  }
+  .chip .k { font-size: 11px; color: var(--dim); letter-spacing: .04em; }
+  .chip .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 24px; font-weight: 600; margin-top: 3px; }
+  .chip .v i { font-style: normal; font-size: 12px; color: var(--dim); margin-left: 4px; font-weight: 400; }
+  .chip.em .v { color: var(--em); } .chip.bl .v { color: var(--bl); } .chip.am .v { color: var(--am); }
+
+  /* --- 主区:左泳道 + 右详情 --- */
+  .main { display: grid; grid-template-columns: minmax(340px, 5fr) 7fr; gap: 14px; align-items: start; }
+  @media (max-width: 920px) { .main { grid-template-columns: 1fr; } }
+
+  .panel { border: 1px solid var(--hair); background: rgba(255, 255, 255, .02); border-radius: 24px; padding: 7px; }
+  .panel .inner {
+    background: var(--core); border-radius: 18px; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .05);
+    padding: 16px 16px 14px; min-height: 200px;
+  }
+  .ptitle { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); padding: 2px 6px 12px; }
+  .ptitle .n { font-family: var(--mono); color: var(--ink); letter-spacing: 0; }
+  .follow {
+    margin-left: auto; cursor: pointer; font-size: 10px; letter-spacing: .08em; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid var(--hair2); color: var(--dim);
+    transition: color .3s var(--ease), border-color .3s var(--ease), transform .3s var(--ease);
+  }
+  .follow:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); transform: translateY(-1px); }
+
+  /* 泳道行 */
+  .lanes { display: flex; flex-direction: column; gap: 6px; max-height: min(62vh, 680px); overflow-y: auto; padding: 0 12px 4px 2px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; }
+  .lane {
+    display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: 16px; cursor: pointer; position: relative;
+    border: 1px solid transparent;
+    transition: background .35s var(--ease), border-color .35s var(--ease), transform .35s var(--ease);
+    animation: reveal .55s var(--ease) both;
+  }
+  .lane:hover { background: var(--core2); transform: translateX(2px); }
+  .lane.on { background: var(--core2); border-color: var(--hair2); }
+  .lane.gen::before {
+    content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 2px; border-radius: 2px;
+    background: var(--em); box-shadow: 0 0 10px rgba(52, 211, 153, .8);
+  }
+  .lane .dot { width: 7px; height: 7px; border-radius: 50%; background: #4b5568; }
+  .lane.gen .dot { background: var(--em); animation: pulse 1.6s var(--ease) infinite; }
+  .lane.act .dot { background: var(--bl); }
+  .who { min-width: 0; }
+  .who .nm { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who .nm .mdl { font-weight: 400; font-size: 10px; color: var(--dim); margin-left: 7px; letter-spacing: .03em; }
+  .who .dir { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .75; margin-top: 1px; }
+  .spark { width: 92px; height: 30px; color: var(--em); opacity: .9; flex: none; }
+  .lane.act .spark { color: var(--bl); } .lane.idl .spark { color: #74809b; }
+  .spark .ln { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .spark .area { fill: currentColor; opacity: .1; stroke: none; }
+  .nums { text-align: right; }
+  .nums .rt { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 600; }
+  .lane.idl .nums .rt { color: var(--dim); }
+  .nums .rt i { font-style: normal; font-size: 10px; color: var(--dim); margin-left: 3px; font-weight: 400; }
+  .nums .sub { font-size: 10.5px; color: var(--dim); margin-top: 1px; white-space: nowrap; }
+  .tm { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 10.5px; color: var(--dim); opacity: .7; }
+  @media (max-width: 560px) { .spark { display: none; } }
+  .empty { color: var(--dim); font-size: 13px; text-align: center; padding: 44px 0; }
+
+  /* 详情区 */
+  .dhead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dhead .nm { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .state {
+    font-size: 10px; letter-spacing: .14em; padding: 4px 11px; border-radius: 999px; font-weight: 600;
+  }
+  .state.gen { color: var(--em); border: 1px solid rgba(52, 211, 153, .3); background: rgba(52, 211, 153, .07); }
+  .state.act { color: var(--bl); border: 1px solid rgba(96, 165, 250, .3); background: rgba(96, 165, 250, .07); }
+  .state.idl { color: var(--dim); border: 1px solid var(--hair2); background: var(--core); }
+  .dhead .mdl { font-size: 11px; color: var(--dim); }
+  .dhead .dir { font-size: 11px; color: var(--dim); margin-left: auto; opacity: .8; font-family: var(--mono); max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .hero { display: flex; align-items: baseline; gap: 12px; margin: 20px 6px 4px; flex-wrap: wrap; }
+  .hero .big {
+    font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600;
+    font-size: clamp(46px, 6.5vw, 74px); line-height: 1; letter-spacing: -.03em;
+  }
+  .hero .big.idl { color: var(--dim); }
+  .hero .unit { color: var(--dim); font-size: 14px; }
+  .hero .cap { font-size: 11px; color: var(--dim); letter-spacing: .1em; }
+  @keyframes bump { 0% { transform: scale(1); } 30% { transform: scale(1.035); opacity: .8; } 100% { transform: scale(1); } }
+  .bump { animation: bump .5s var(--ease); }
+
+  .dsub { color: var(--dim); font-size: 13px; margin: 6px 6px 0; }
+  .dsub b { color: var(--ink); font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+
+  .dchips { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 18px 0 16px; }
+  .dchips .c { border: 1px solid var(--hair); border-radius: 14px; padding: 10px 13px; background: rgba(255, 255, 255, .015); }
+  .dchips .c .k { font-size: 10.5px; color: var(--dim); }
+  .dchips .c .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; margin-top: 2px; }
+  .dchips .c .v i { font-style: normal; font-size: 10px; color: var(--dim); font-weight: 400; margin-left: 3px; }
+
+  .chartbox { border: 1px solid var(--hair); border-radius: 16px; background: rgba(0, 0, 0, .22); padding: 10px 8px 6px; }
+  .chartbox .cap { display: flex; font-size: 10.5px; color: var(--dim); padding: 0 8px 6px; letter-spacing: .06em; }
+  .chartbox .cap span:last-child { margin-left: auto; font-family: var(--mono); }
+  #chart { width: 100%; height: 230px; display: block; }
+
+  /* 系统条 */
+  .sys { display: flex; gap: 26px; flex-wrap: wrap; align-items: center; margin-top: 14px; padding: 13px 18px;
+    border: 1px solid var(--hair); border-radius: 16px; background: rgba(255, 255, 255, .015); font-size: 12px; color: var(--dim); }
+  .sys b { color: var(--ink); font-weight: 600; font-family: var(--mono); font-variant-numeric: tabular-nums; margin-left: 5px; }
+  .sys .meter { width: 84px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .07); overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 8px; }
+  .sys .meter i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--bl); transition: width .8s var(--ease); }
+  .sys .meter.warn i { background: var(--am); } .sys .meter.crit i { background: var(--rd); }
+
+  footer { text-align: center; color: var(--dim); opacity: .6; font-size: 11px; margin-top: 20px; letter-spacing: .04em; }
 </style>
 </head>
 <body>
-  <header>
-    <h1>⚡ Token 输出速率 · ZCode 实时监控</h1>
-    <span class="badge">真实数据 · 当前会话 · 主对话</span>
-    <span class="clock"><span class="dot" id="livendot"></span><span id="clock">--:--:--</span></span>
+<div class="shell">
+  <header class="top reveal" style="--d:.02s">
+    <div>
+      <div class="eyebrow">ZCode · 实时监控</div>
+      <h1>Token 速率 <span class="thin">· 每会话</span></h1>
+    </div>
+    <div class="clockbox">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="live" id="live"><span class="dot"></span><span id="liveTxt">连接中</span></div>
+    </div>
   </header>
 
-  <div class="cards">
-    <div class="card">
-      <div class="label">最近一次主回复的生成速度</div>
-      <div class="value"><span id="toks">--</span><span class="unit">tok/s</span></div>
-      <div class="delta model" id="tokmodel">模型 --</div>
-      <div class="delta" id="tokinfo">等待数据…</div>
-    </div>
-    <div class="card">
-      <div class="label">首字延迟(TTFT)</div>
-      <div class="value"><span id="ttft">--</span><span class="unit">s</span></div>
-      <div class="delta" id="ttftinfo">从发出消息到模型开始出字</div>
-    </div>
-    <div class="card">
-      <div class="label">最新一问即时速率(本问)</div>
-      <div class="value"><span id="turnToks">--</span><span class="unit">tok/s</span></div>
-      <div class="delta model" id="turnState">等待数据…</div>
-      <div class="delta" id="turnInfo">提问触发的轮次进行中时每秒更新</div>
-    </div>
+  <div class="stats reveal" style="--d:.1s">
+    <div class="chip"><div class="in"><div class="k">24h 内会话</div><div class="v" id="sTotal">--<i>个</i></div></div></div>
+    <div class="chip em"><div class="in"><div class="k">生成中</div><div class="v" id="sGen">--<i>个</i></div></div></div>
+    <div class="chip bl"><div class="in"><div class="k">活跃(10 分钟内)</div><div class="v" id="sAct">--<i>个</i></div></div></div>
+    <div class="chip am"><div class="in"><div class="k">各会话累计输出</div><div class="v" id="sCum">--<i>tok</i></div></div></div>
   </div>
 
-  <div class="mini">
-    <div class="m"><div class="label">近5次平均</div><div class="v"><span class="n" id="avg">--</span><span class="u">tok/s</span></div></div>
-    <div class="m"><div class="label">近5次峰值</div><div class="v"><span class="n" id="max">--</span><span class="u">tok/s</span></div></div>
-    <div class="m"><div class="label">上轮输出</div><div class="v"><span class="n" id="out">--</span><span class="u">tok</span></div></div>
-    <div class="m"><div class="label">会话请求数</div><div class="v"><span class="n" id="cnt">--</span><span class="u">次</span></div></div>
+  <div class="main">
+    <section class="panel reveal" style="--d:.18s">
+      <div class="inner">
+        <div class="ptitle">会话泳道 <span class="n" id="laneCount"></span><span class="follow" id="follow" hidden>← 跟随最新</span></div>
+        <div class="lanes" id="lanes"></div>
+      </div>
+    </section>
+
+    <section class="panel reveal" style="--d:.26s">
+      <div class="inner">
+        <div class="dhead">
+          <span class="nm" id="dName">等待数据…</span>
+          <span class="state idl" id="dState">空闲</span>
+          <span class="mdl" id="dModel"></span>
+          <span class="dir" id="dDir"></span>
+        </div>
+        <div class="hero">
+          <span class="big" id="dRate">--</span>
+          <span class="unit">tok/s</span>
+          <span class="cap" id="dCap">本轮即时速率</span>
+        </div>
+        <div class="dsub" id="dSub">等待 usage 数据库返回…</div>
+        <div class="dchips">
+          <div class="c"><div class="k">近段均值</div><div class="v" id="cAvg">--</div></div>
+          <div class="c"><div class="k">近段峰值</div><div class="v" id="cMax">--</div></div>
+          <div class="c"><div class="k">会话累计输出</div><div class="v" id="cCum">--<i>tok</i></div></div>
+          <div class="c"><div class="k">会话请求数</div><div class="v" id="cReq">--<i>次</i></div></div>
+        </div>
+        <div class="chartbox">
+          <div class="cap"><span>生成速率曲线</span><span id="chartCap"></span></div>
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <div class="panel">
-    <h2>生成速率曲线 <span class="legend"><span><i style="background:var(--green)"></i>tok/s</span><span id="tokrange"></span></span></h2>
-    <canvas id="tokChart" height="260"></canvas>
+  <div class="sys reveal" style="--d:.34s" id="sys">
+    <span>本机资源</span>
+    <span>CPU<b id="cpu">--%</b><span class="meter" id="cpuBar"><i></i></span></span>
+    <span>内存<b id="mem">--</b><span class="meter" id="memBar"><i></i></span></span>
+    <span>运行<b id="up">--</b></span>
+    <span id="plat"></span>
   </div>
 
-  <div class="panel">
-    <h2>本机资源(真实)</h2>
-    <div class="sysrow"><span>CPU <b id="cpu">--%</b> (<span id="cores">-</span> 核)</span></div>
-    <div class="bar" id="cpubar"><div style="width:0%"></div></div>
-    <div class="sysrow"><span>内存 <b id="mem">--</b></span><span><b id="mempct">--%</b></span></div>
-    <div class="bar" id="membar"><div style="width:0%"></div></div>
-    <div class="sysrow"><span>主机运行 <b id="uptime">--</b></span><span id="platform">-</span></div>
-  </div>
-
-  <footer>每秒自动刷新 · 数据源:ZCode usage 数据库(真实) · 仅统计当前会话主对话请求</footer>
+  <footer>每秒刷新 · 数据源:ZCode usage 数据库(真实)· 各会话独立统计 · 隐藏标签页时自动暂停</footer>
+</div>
 
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const HIST_SPARK = 20; // 泳道迷你曲线取最近 20 段
 
-function setNum(id, v, digits = 0) {
-  $(id).textContent = v == null ? "--" : Number(v).toFixed(digits);
+const fmtCompact = (n) => {
+  if (n == null) return "--";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e4) return Math.round(n / 1e3) + "k";
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + "k";
+  return String(n);
+};
+const fmtNum = (n) => (n == null ? "--" : Number(n).toLocaleString("en-US"));
+const hhmmss = (t) => new Date(t).toLocaleTimeString("zh-CN", { hour12: false });
+const hhmm = (t) => hhmmss(t).slice(0, 5);
+const rate1 = (v) => (v == null ? "--" : Number(v).toFixed(1));
+
+// 值变化时轻弹一下(只动 transform/opacity,数字扫读定位用)
+function bump(el) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
+
+/* ---------- 会话泳道 ---------- */
+const lanesEl = $("lanes");
+const laneNodes = new Map(); // sid -> {root, dot容器由 class 表达, nm, mdl, dir, ln, area, rt, sub, tm}
+let focusSid = null, focusLock = false;
+
+function laneRate(s) {
+  if (s.turn && s.turn.tokPerSec != null) return s.turn.tokPerSec;
+  if (s.latest && s.latest.tokPerSec != null) return s.latest.tokPerSec;
+  return null;
 }
 
-function drawLine(canvas, series, colors, opts = {}) {
-  const dpr = window.devicePixelRatio || 1;
+function buildLane() {
+  const root = document.createElement("div");
+  root.className = "lane idl";
+  root.setAttribute("role", "button");
+  root.setAttribute("tabindex", "0");
+  root.innerHTML =
+    '<span class="dot"></span>' +
+    '<div class="who"><div class="nm"><span class="t"></span><span class="mdl"></span></div><div class="dir"></div></div>' +
+    '<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><path class="area"></path><path class="ln"></path></svg>' +
+    '<div class="nums"><div class="rt"><span class="v">--</span><i>tok/s</i></div><div class="sub"></div></div>' +
+    '<div class="tm">--:--</div>';
+  return {
+    root,
+    nm: root.querySelector(".nm .t"), mdl: root.querySelector(".mdl"), dir: root.querySelector(".dir"),
+    ln: root.querySelector(".ln"), area: root.querySelector(".area"),
+    rt: root.querySelector(".rt .v"), sub: root.querySelector(".sub"), tm: root.querySelector(".tm"),
+    lastRate: null,
+  };
+}
+
+// 迷你曲线:最近 HIST_SPARK 段映射到 0..100 × 0..28(viewBox 坐标,attr 更新零重排)
+function sparkPath(ln, area, hist) {
+  const h = hist.slice(-HIST_SPARK).filter((v) => v != null);
+  if (h.length < 2) { ln.setAttribute("d", ""); area.setAttribute("d", ""); return; }
+  let min = Math.min(...h), max = Math.max(...h);
+  if (max - min < 1e-9) { min -= 1; max += 1; }
+  const x = (i) => (i / (h.length - 1)) * 100;
+  const y = (v) => 26 - ((v - min) / (max - min)) * 24;
+  let d = "";
+  for (let i = 0; i < h.length; i++) d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(h[i]).toFixed(1);
+  ln.setAttribute("d", d);
+  area.setAttribute("d", d + "L100 28 L0 28 Z");
+}
+
+function updateLanes(sessions, total) {
+  const order = sessions.map((s) => s.sessionId);
+  const seen = new Set(order);
+  // 移除消失的泳道
+  for (const [sid, node] of laneNodes) if (!seen.has(sid)) { node.root.remove(); laneNodes.delete(sid); }
+  // 按服务端顺序归位(仅次序变化时移动节点)
+  const orderKey = order.join("|");
+  if (updateLanes.lastOrder !== orderKey) {
+    for (const sid of order) { const n = laneNodes.get(sid); if (n) lanesEl.appendChild(n.root); }
+    updateLanes.lastOrder = orderKey;
+  }
+  for (const s of sessions) {
+    let n = laneNodes.get(s.sessionId);
+    if (!n) { n = buildLane(); laneNodes.set(s.sessionId, n); lanesEl.appendChild(n.root); bindLane(n, s.sessionId); }
+    n.root.className = "lane " + (s.status === "generating" ? "gen" : s.status === "active" ? "act" : "idl") + (s.sessionId === focusSid ? " on" : "");
+    n.nm.textContent = s.label;
+    n.mdl.textContent = s.model || "";
+    n.dir.textContent = s.cwd || s.sessionId;
+    sparkPath(n.ln, n.area, s.history || []);
+    const r = laneRate(s);
+    const rtxt = r == null ? "--" : rate1(r);
+    if (rtxt !== n.lastRate) { n.rt.textContent = rtxt; if (r != null && n.lastRate !== null && s.status === "generating") bump(n.rt); n.lastRate = rtxt; }
+    const seg = s.turn && s.turn.requests > 1 ? s.turn.requests + " 段 · " : "";
+    n.sub.textContent = s.session ? seg + "累计 " + fmtCompact(s.session.totalOutput + s.session.totalReasoning) : "无数据";
+    n.tm.textContent = s.lastAt ? hhmm(s.lastAt) : "--:--";
+  }
+  if (!sessions.length) {
+    if (!updateLanes.emptyEl) {
+      const el = document.createElement("div");
+      el.className = "empty";
+      el.textContent = "暂无会话数据 —— 在 ZCode 里发一条消息试试";
+      lanesEl.appendChild(el);
+      updateLanes.emptyEl = el;
+    }
+  } else if (updateLanes.emptyEl) { updateLanes.emptyEl.remove(); updateLanes.emptyEl = null; }
+  $("laneCount").textContent = sessions.length
+    ? "· " + sessions.length + (total && total > sessions.length ? " / " + total : "")
+    : "";
+}
+function bindLane(n, sid) {
+  const pick = () => { focusSid = sid; focusLock = true; $("follow").hidden = false; };
+  n.root.addEventListener("click", pick);
+  n.root.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+}
+$("follow").addEventListener("click", () => { focusLock = false; $("follow").hidden = true; });
+
+/* ---------- 聚焦详情 ---------- */
+const stateTxt = { generating: "生成中", active: "活跃", idle: "空闲" };
+let chartHist = [], chartSig = "";
+
+function drawChart() {
+  const canvas = $("chart"), dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return;
-  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-
-  const all = series.flat().filter((v) => v != null);
-  if (!all.length) return;
-  let min = Math.min(...all), max = Math.max(...all);
-  if (opts.zero) min = 0;
-  const pad = (max - min) * 0.15 || 1;
-  min -= pad; max += pad;
-  const n = Math.max(...series.map((s) => s.length));
-  const x = (i) => (n <= 1 ? 0 : (i / (n - 1)) * (w - 44));
-  const y = (v) => h - 18 - ((v - min) / (max - min)) * (h - 30);
-
-  ctx.strokeStyle = "#232c47"; ctx.fillStyle = "#8b94ad";
-  ctx.lineWidth = 1; ctx.font = "11px Segoe UI";
+  const data = chartHist.filter((v) => v != null);
+  if (data.length < 2) {
+    ctx.fillStyle = "rgba(154,164,187,.55)"; ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillText(data.length ? "样本不足,等待更多请求完成…" : "暂无速率样本", 12, h / 2);
+    return;
+  }
+  const right = 46, top = 10, bottom = 18;
+  let min = 0, max = Math.max(...data);
+  const pad = (max - min) * 0.12 || 1; max += pad;
+  const x = (i) => (i / (data.length - 1)) * (w - right);
+  const y = (v) => h - bottom - ((v - min) / (max - min)) * (h - top - bottom);
+  ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.fillStyle = "rgba(178,188,208,.9)"; ctx.lineWidth = 1;
+  ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
   for (let g = 0; g <= 3; g++) {
-    const gy = 12 + ((h - 30) * g) / 3;
-    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w - 44, gy); ctx.stroke();
-    ctx.fillText(Math.round(max - ((max - min) * g) / 3), w - 38, gy + 4);
+    const gy = top + ((h - top - bottom) * g) / 3;
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w - right, gy); ctx.stroke();
+    ctx.fillText(Math.round(max - ((max - min) * g) / 3), w - right + 8, gy + 3);
   }
-
-  series.forEach((data, si) => {
-    if (!data.length) return;
-    const color = colors[si];
-    if (opts.fill && si === 0) {
-      const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, color + "33"); grad.addColorStop(1, color + "00");
-      ctx.beginPath();
-      ctx.moveTo(x(0), y(data[0]));
-      data.forEach((v, i) => ctx.lineTo(x(i + n - data.length), y(v)));
-      ctx.lineTo(x(n - 1), h - 18); ctx.lineTo(x(n - data.length), h - 18);
-      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round";
-    data.forEach((v, i) => {
-      const px = x(i + n - data.length), py = y(v);
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    });
-    ctx.stroke();
-    const last = data[data.length - 1];
-    ctx.beginPath();
-    ctx.arc(x(n - 1), y(last), 3, 0, Math.PI * 2);
-    ctx.fillStyle = color; ctx.fill();
-  });
-
-  if (opts.avgLine && series[0].length) {
-    const avg = series[0].reduce((a, b) => a + b, 0) / series[0].length;
-    ctx.beginPath(); ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "#2a3a63"; ctx.lineWidth = 1;
-    ctx.moveTo(0, y(avg)); ctx.lineTo(w - 44, y(avg)); ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, "rgba(52,211,153,.28)"); grad.addColorStop(1, "rgba(52,211,153,0)");
+  ctx.beginPath();
+  data.forEach((v, i) => { const px = x(i), py = y(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+  ctx.lineTo(x(data.length - 1), h - bottom); ctx.lineTo(x(0), h - bottom); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.beginPath();
+  data.forEach((v, i) => { const px = x(i), py = y(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+  ctx.strokeStyle = "#34d399"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  const avg = data.reduce((a, b) => a + b, 0) / data.length;
+  ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(96,165,250,.5)"; ctx.lineWidth = 1;
+  ctx.moveTo(0, y(avg)); ctx.lineTo(w - right, y(avg)); ctx.stroke(); ctx.setLineDash([]);
+  const lx = x(data.length - 1), ly = y(data[data.length - 1]);
+  ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, Math.PI * 2); ctx.fillStyle = "#34d399"; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI * 2); ctx.strokeStyle = "rgba(52,211,153,.35)"; ctx.stroke();
 }
 
-// --- Token 速率(真实数据) ---
-const tokHist = [];
-// 千分位:与 CLI 的 fmtNum 同规则
-const fmtNum = (n) => n.toLocaleString("en-US");
+function renderDetail(s) {
+  $("dName").textContent = s.label;
+  $("dModel").textContent = s.model ? "· " + s.model : "";
+  $("dDir").textContent = s.cwd || s.sessionId;
+  const st = $("dState");
+  st.className = "state " + (s.status === "generating" ? "gen" : s.status === "active" ? "act" : "idl");
+  st.textContent = stateTxt[s.status] || s.status;
+  const r = laneRate(s);
+  const big = $("dRate");
+  big.textContent = r == null ? "--" : rate1(r);
+  big.className = "big" + (s.status === "idle" ? " idl" : "");
+  if (r != null && s.status === "generating") bump(big);
+  $("dCap").textContent = s.turn ? "本轮即时速率" : "最近一段速率";
+  if (s.turn) {
+    const t = s.turn;
+    $("dSub").innerHTML =
+      "首字 <b>" + (t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) : "-") + "s</b> · 输出 <b>" + fmtNum(t.totalOutput) +
+      (t.totalReasoning ? " +" + fmtNum(t.totalReasoning) + " 思考" : "") + "</b> tok · 生成 <b>" +
+      (t.genMs > 0 ? (t.genMs / 1000).toFixed(1) : "-") + "s</b>" +
+      (t.requests > 1 ? " · <b>" + t.requests + "</b> 段 · 峰 <b>" + rate1(t.peak) + "</b>" : "") +
+      " · ⏱ " + hhmmss(t.lastAt);
+  } else if (s.latest) {
+    const l = s.latest;
+    $("dSub").innerHTML = "输出 <b>" + fmtNum(l.outputTokens) + "</b> tok · 生成 <b>" +
+      (l.genMs != null ? (l.genMs / 1000).toFixed(1) : "-") + "s</b> · ⏱ " + hhmmss(l.completedAt);
+  } else {
+    $("dSub").textContent = "该会话还没有已完成的模型请求";
+  }
+  const ses = s.session;
+  $("cAvg").textContent = ses && ses.avg != null ? rate1(ses.avg) : "--";
+  $("cMax").textContent = ses && ses.max != null ? rate1(ses.max) : "--";
+  $("cCum").innerHTML = ses ? fmtCompact(ses.totalOutput + ses.totalReasoning) + "<i>tok</i>" : "--";
+  $("cReq").innerHTML = ses ? fmtNum(ses.requests) + "<i>次</i>" : "--";
+  chartHist = s.history || [];
+  const sig = s.sessionId + ":" + chartHist.length + ":" + (chartHist[chartHist.length - 1] ?? "");
+  if (sig !== chartSig) { chartSig = sig; drawChart(); $("chartCap").textContent = "近 " + chartHist.filter((v) => v != null).length + " 段"; }
+}
 
-async function tickTok() {
+/* ---------- 轮询 ---------- */
+async function tickSessions() {
   try {
-    const res = await fetch("/api/token-rate", { cache: "no-store" });
+    const res = await fetch("/api/sessions", { cache: "no-store" });
     if (!res.ok) return;
     const r = await res.json();
-    $("livendot").classList.remove("err");
-    if (r.latest) {
-      setNum("toks", r.latest.tokPerSec, 1);
-      setNum("ttft", r.latest.ttftMs != null ? r.latest.ttftMs / 1000 : null, 1);
-      const genS = r.latest.genMs != null ? (r.latest.genMs / 1000).toFixed(1) : "-";
-      $("tokmodel").textContent = "模型 " + (r.latest.model || "--");
-      $("tokinfo").textContent = "输出 " + fmtNum(r.latest.outputTokens) + " tok · 生成 " + genS + "s · ⏱ " +
-        new Date(r.latest.completedAt).toLocaleTimeString("zh-CN", { hour12: false });
-      if (r.latest.tokPerSec != null) $("out").textContent = fmtNum(r.latest.outputTokens);
-    }
-    if (r.session) {
-      setNum("avg", r.session.avg, 1);
-      setNum("max", r.session.max, 1);
-      $("cnt").textContent = r.session.samples;
-      $("tokrange").textContent = "会话 " + (r.sessionId || "").slice(0, 13) + "…";
-    }
-    // 最新一问(本问):usage 库按 turn 逐段实时入库,生成期间每秒都能看到速率爬升
-    if (r.turn && r.turn.tokPerSec != null) {
-      setNum("turnToks", r.turn.tokPerSec, 1);
-      const active = Date.now() - r.turn.lastAt < 120000;
-      $("turnState").textContent = active ? "● 进行中 / 刚结束" : "最近一问";
-      const tokTxt = fmtNum(r.turn.totalOutput) +
-        (r.turn.totalReasoning ? " + " + fmtNum(r.turn.totalReasoning) + " 思考" : "");
-      $("turnInfo").textContent = "输出 " + tokTxt + " tok · " + r.turn.requests + " 段 · ⏱ " +
-        new Date(r.turn.lastAt).toLocaleTimeString("zh-CN", { hour12: false });
-    }
-    // 直接渲染服务端返回的完整历史(刷新/重开页面不丢,数据库为准)
-    if (r.history) {
-      tokHist.length = 0;
-      for (const h of r.history) tokHist.push(h.tokPerSec ?? null);
-      drawLine($("tokChart"), [tokHist], ["#2fd67b"], { fill: true, zero: true, avgLine: true });
-      $("tokrange").textContent = tokHist.length ? ("近 " + tokHist.length + " 次") : "";
-    }
+    $("live").classList.remove("err"); $("liveTxt").textContent = "实时";
+    const list = r.sessions || [];
+    updateLanes(list, r.total);
+    if (!focusLock) focusSid = list.length ? list[0].sessionId : null;
+    const cur = list.find((x) => x.sessionId === focusSid) || list[0];
+    if (cur) renderDetail(cur); else { $("dName").textContent = "暂无会话"; $("dSub").textContent = "等待 usage 数据库返回…"; }
+    const gen = list.filter((x) => x.status === "generating").length;
+    const act = list.filter((x) => x.status !== "idle").length;
+    $("sTotal").innerHTML = (r.total ?? list.length) + "<i>个</i>";
+    $("sGen").innerHTML = gen + "<i>个</i>";
+    $("sAct").innerHTML = act + "<i>个</i>";
+    let cum = 0; for (const s of list) if (s.session) cum += s.session.totalOutput + s.session.totalReasoning;
+    $("sCum").innerHTML = fmtCompact(cum) + "<i>tok</i>";
   } catch {
-    $("livendot").classList.add("err");
+    $("live").classList.add("err"); $("liveTxt").textContent = "连接断开";
   }
 }
 
@@ -237,33 +456,36 @@ async function tickSys() {
     const res = await fetch("/api/metrics", { cache: "no-store" });
     if (!res.ok) return;
     const m = await res.json();
-    setNum("cpu", m.system.cpuPercent, 1);
-    $("cores").textContent = m.system.cpuCores;
-    setBar("cpubar", m.system.cpuPercent);
-    $("mem").textContent = (m.system.memUsedMB / 1024).toFixed(1) + " / " + (m.system.memTotalMB / 1024).toFixed(1) + " GB";
-    setNum("mempct", m.system.memPercent, 1); setBar("membar", m.system.memPercent);
-    $("uptime").textContent = m.system.hostUptimeHours + " 小时";
-    $("platform").textContent = m.system.platform;
+    $("cpu").textContent = m.system.cpuPercent.toFixed(1) + "%";
+    setBar($("cpuBar"), m.system.cpuPercent);
+    $("mem").textContent = (m.system.memUsedMB / 1024).toFixed(1) + " / " + (m.system.memTotalMB / 1024).toFixed(0) + " GB";
+    setBar($("memBar"), m.system.memPercent);
+    $("up").textContent = m.system.hostUptimeHours + " 小时";
+    $("plat").textContent = m.system.platform + " · " + m.system.cpuCores + " 核";
   } catch {}
 }
-
-function setBar(id, pct) {
-  const bar = $(id);
+function setBar(el, pct) {
   const v = Math.min(100, Math.max(0, pct ?? 0));
-  bar.firstElementChild.style.width = v + "%";
-  bar.className = "bar" + (v > 85 ? " crit" : v > 65 ? " warn" : "");
+  el.firstElementChild.style.width = v + "%";
+  el.className = "meter" + (v > 85 ? " crit" : v > 65 ? " warn" : "");
 }
 
-function clock() {
-  $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+function clock() { $("clock").textContent = hhmmss(Date.now()); }
+window.addEventListener("resize", () => { chartSig = ""; drawChart(); });
+
+// 隐藏标签页即暂停轮询(可见性恢复后立即拉一次)
+let vis = true;
+document.addEventListener("visibilitychange", () => {
+  const now = !document.hidden;
+  if (now && !vis) tickSessions();
+  vis = now;
+});
+function loop() {
+  setInterval(clock, 1000);
+  setInterval(() => { if (vis) tickSessions(); }, 1000);
+  setInterval(() => { if (vis) tickSys(); }, 2000);
 }
-
-window.addEventListener("resize", () => drawLine($("tokChart"), [tokHist], ["#2fd67b"], { fill: true, zero: true, avgLine: true }));
-
-clock(); tickTok(); tickSys();
-setInterval(clock, 1000);
-setInterval(tickTok, 1000);
-setInterval(tickSys, 2000);
+clock(); tickSessions(); tickSys(); loop();
 </script>
 </body>
 </html>

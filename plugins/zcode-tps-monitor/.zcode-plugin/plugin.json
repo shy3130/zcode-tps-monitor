@@ -1,10 +1,10 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.8.5",
-  "description": "Token output-rate monitor for ZCode: shows real instant tokens/sec (from the ZCode usage DB) for the current question at the end of each tool-using reply — never the previous turn — plus a /tps command, MCP tools, and a real-time dashboard; also supports service-TPS monitoring via a configurable metrics URL or demo data.",
+  "version": "0.10.0",
+  "description": "Token output-rate monitor for ZCode: shows real instant tokens/sec (from the ZCode usage DB) for the current question at the end of each tool-using reply — never the previous turn — plus a /tps command with an all-sessions overview (--sessions), MCP tools, and a multi-session real-time dashboard (one lane per session, no overlay window needed); also supports service-TPS monitoring via a configurable metrics URL or demo data.",
   "description_i18n": {
-    "en": "Token rate monitor: per-question instant tokens/sec from the ZCode usage DB, shown at the end of each tool-using reply; /tps command, MCP tools, and a real-time dashboard. Supports a real metrics URL or built-in demo data for service TPS.",
-    "zh-CN": "ZCode Token 输出速率监控：每条调用了工具的回答末尾自动附本问的即时 tok/s（读取 ZCode usage 数据库，绝不显示上一轮），另有 /tps 命令、MCP 工具与实时大屏；同时支持业务 TPS 监控（可配置指标接口或演示数据）。"
+    "en": "Token rate monitor: per-question instant tokens/sec from the ZCode usage DB, shown at the end of each tool-using reply; /tps command with all-sessions overview, MCP tools, and a multi-session real-time dashboard (one lane per session). Supports a real metrics URL or built-in demo data for service TPS.",
+    "zh-CN": "ZCode Token 输出速率监控：每条调用了工具的回答末尾自动附本问的即时 tok/s（读取 ZCode 数据库，绝不显示上一轮），另有 /tps 命令（含全部会话总览 --sessions）、MCP 工具与多会话实时大屏（每个会话一条泳道，无需悬浮窗）；同时支持业务 TPS 监控（可配置指标接口或演示数据）。"
   },
   "author": {
     "name": "Administrator"

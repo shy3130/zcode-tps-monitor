@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>TPS 悬浮窗</title>
+<style>
+  /* DSH 风格紧凑小框:卡片约 330×184、单行条约 620×40(?style=line);
+     body 零边距零滚动;配色对齐监控大屏(index.html)。零外部资源(无 CDN/字体/图片),
+     系统字体栈;仅用 WKWebView(WebKit)长期支持的特性:flex / keyframes / rgba /
+     tabular-nums / :not(),不用 gap、:has()、grid。 */
+  html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; }
+  body {
+    background: #0b1020; color: #e8ecf7;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none; -webkit-user-select: none;
+    cursor: default;
+  }
+  .wrap { box-sizing: border-box; width: 100%; height: 100%; padding: 10px 14px 12px; display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; }
+  .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #8b94ad; margin-right: 6px; }
+  .dot.on { background: #2fd67b; animation: pulse 1.2s infinite; }
+  .state { font-size: 12px; color: #8b94ad; }
+  .state.on { color: #2fd67b; }
+  .main { display: flex; align-items: baseline; margin-top: 4px; }
+  .bolt { font-size: 24px; margin-right: 7px; }
+  .num { font-size: 46px; font-weight: 700; line-height: 1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .num.off { color: #565f7a; }
+  .unit { font-size: 13px; color: #8b94ad; margin-left: 6px; }
+  .scope { margin-left: auto; font-size: 11px; color: #565f7a; }
+  .info { margin-top: auto; font-size: 11px; color: #8b94ad; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+
+  /* 交互按钮区:悬浮在右上角(单行模式垂直居中)。面板的透明拖动层只覆盖左侧,
+     右侧 120pt 不覆盖(见 OverlayPanel.swift),按钮可点击、其余区域按住拖动。 */
+  .ctrls { position: absolute; top: 8px; right: 8px; display: flex; }
+  .cbtn {
+    width: 22px; height: 22px; margin-left: 5px; box-sizing: border-box;
+    border: 1px solid #2a3350; border-radius: 6px;
+    background: #141b33; color: #aab3cf;
+    font-size: 12px; line-height: 20px; text-align: center;
+    cursor: pointer; -webkit-user-select: none;
+  }
+  .cbtn:hover { background: #1d2747; border-color: #3a4774; color: #e8ecf7; }
+  .cbtn:active { background: #26325a; }
+  .cbtn.on { color: #7ea2ff; border-color: #3a4774; }
+
+  /* 速率曲线(卡片模式,点 📈 开关):细 sparkline,高约 26px */
+  .spark { display: none; margin-top: 6px; width: 100%; height: 26px; }
+  body:not(.line) .spark.on { display: block; }
+  .spark polyline { stroke: #5f8bff; }
+
+  /* 单行模式(?style=line):一条细横条,配合面板 --size 620x40 贴在输入框上方 */
+  body.line { border-radius: 8px; }
+  body.line .wrap { flex-direction: row; align-items: center; padding: 0 12px; }
+  body.line .top { flex: none; margin-right: 10px; }
+  body.line .bolt { font-size: 15px; margin-right: 4px; }
+  body.line .num { font-size: 20px; letter-spacing: 0; }
+  body.line .unit { font-size: 11px; margin: 0 10px 0 4px; }
+  body.line .scope { margin-left: 0; font-size: 10px; margin-right: 10px; }
+  body.line .info { margin: 0 0 0 4px; }
+  body.line .ctrls { top: 50%; right: 8px; transform: translateY(-50%); }
+  body.line .cbtn { width: 20px; height: 20px; line-height: 18px; font-size: 11px; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <span class="dot" id="dot"></span>
+      <span class="state" id="state">连接中…</span>
+    </div>
+    <div class="main">
+      <span class="bolt">&#9889;</span><span class="num off" id="num">--</span><span class="unit">tok/s</span>
+      <span class="scope" id="scope"></span>
+    </div>
+    <div class="info" id="info">等待数据…</div>
+    <svg class="spark" id="spark" viewBox="0 0 300 26" preserveAspectRatio="none" aria-hidden="true">
+      <polyline id="sparkline" fill="none" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="ctrls">
+      <span class="cbtn" id="btnRefresh" title="立即刷新">&#8635;</span>
+      <span class="cbtn" id="btnPause" title="暂停 / 恢复自动刷新">&#9208;</span>
+      <span class="cbtn" id="btnSpark" title="显示 / 隐藏速率曲线">&#128200;</span>
+    </div>
+  </div>
+<script>
+(function () {
+  "use strict";
+  // 单行模式:URL 带 style=line 时切换为细横条布局(配合面板 --size 参数)
+  var lineMode = /style=line/.test(location.search);
+  if (lineMode) {
+    document.documentElement.className += " line";
+    document.body.className += " line";
+  }
+  var $ = function (id) { return document.getElementById(id); };
+  var busy = false;
+  var paused = false;   // 暂停自动刷新(手动 ↻ 仍可拉取)
+  var sparkOn = false;  // 速率曲线开关(卡片模式)
+
+  // 紧凑单位:千以下原始、千~万一位小数 k、万~百万取整 k、百万以上一位小数 M(与 token-rate.mjs 的 fmtCompact 一致)
+  function fmtCompact(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+    if (n >= 10000) return Math.round(n / 1000) + "k";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+    return String(n);
+  }
+  function fmtNum(n) { return Number(n).toLocaleString("en-US"); }
+  function fmtSec(ms) { return ms != null && isFinite(ms) ? (ms / 1000).toFixed(1) + "s" : "-"; }
+
+  // 速率曲线:history 为旧→新的 tok/s 数组,映射到 300×26 的 viewBox
+  function drawSpark(hist) {
+    var poly = $("sparkline");
+    if (!sparkOn || !hist || hist.length < 2) { poly.setAttribute("points", ""); return; }
+    var min = Math.min.apply(null, hist);
+    var max = Math.max.apply(null, hist);
+    var span = max - min || 1;
+    var pts = [];
+    for (var i = 0; i < hist.length; i++) {
+      var x = (i / (hist.length - 1)) * 300;
+      var y = 22 - ((hist[i] - min) / span) * 18;
+      pts.push(x.toFixed(1) + "," + y.toFixed(1));
+    }
+    poly.setAttribute("points", pts.join(" "));
+  }
+
+  // 网络异常:灰点 + 文案,数字保持上次的值,下个周期自动重试
+  function setConn() {
+    $("dot").className = "dot";
+    $("state").className = "state";
+    $("state").textContent = "连接中断";
+  }
+
+  function render(d) {
+    var st = d && d.status ? d.status : "no-data";
+    var on = st === "generating";
+    $("dot").className = on ? "dot on" : "dot";
+    $("state").className = on ? "state on" : "state";
+    $("state").textContent = paused ? "已暂停" : on ? "生成中" : st === "idle" ? "空闲" : "无数据";
+
+    // 主数字:优先本轮(turn),无本轮数据时退回上轮(latest)并把标注从「本轮」换成「上轮」
+    var t = d ? d.turn : null;
+    var l = d ? d.latest : null;
+    var s = d ? d.session : null;
+    var src = null;
+    if (t && (t.tokPerSec != null || t.totalOutput != null)) src = t;
+    else if (l) src = l;
+    if (src) {
+      $("num").textContent = src.tokPerSec != null ? src.tokPerSec : "--";
+      $("num").className = src.tokPerSec != null ? "num" : "num off";
+      $("scope").textContent = src === t ? "本轮" : "上轮";
+    } else {
+      $("num").textContent = "--";
+      $("num").className = "num off";
+      $("scope").textContent = "";
+    }
+
+    // 统计小字:单行模式空间有限,只留输出与累计;卡片模式给全量
+    var cum = s ? fmtCompact((s.totalOutput || 0) + (s.totalReasoning || 0)) : "-";
+    if (lineMode) {
+      var out = src === t
+        ? (t.totalOutput || 0) + (t.totalReasoning || 0)
+        : l ? (l.outputTokens || 0) + (l.reasoningTokens || 0) : null;
+      $("info").textContent = src ? "输出 " + fmtNum(out) + " · 累计 " + cum : "暂无会话数据";
+    } else if (t) {
+      $("info").textContent =
+        "首字 " + fmtSec(t.ttftMs) +
+        " · 输出 " + fmtNum((t.totalOutput || 0) + (t.totalReasoning || 0)) + " tok" +
+        " · 累计 " + cum +
+        " · " + t.requests + " 段";
+    } else if (l) {
+      $("info").textContent =
+        "首字 " + fmtSec(l.ttftMs) +
+        " · 输出 " + fmtNum((l.outputTokens || 0) + (l.reasoningTokens || 0)) + " tok" +
+        " · 累计 " + cum +
+        " · - 段";
+    } else {
+      $("info").textContent = st === "no-data" ? "暂无会话数据" : "等待数据…";
+    }
+
+    drawSpark(d ? d.history : null);
+  }
+
+  // 每秒增量刷新;上一拍未返回时跳过本拍,避免请求堆积(页面可能被系统挂起后恢复);
+  // 暂停时不再轮询(点 ↻ 可立即手动拉一次)
+  function tick() {
+    if (busy) return;
+    busy = true;
+    fetch("/api/live", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(setConn)
+      .then(function () { busy = false; });
+  }
+
+  // 交互按钮:立即刷新 / 暂停自动刷新 / 曲线开关(曲线仅卡片模式显示)
+  $("btnRefresh").addEventListener("click", function () { paused = false; $("btnPause").textContent = "\u23F8"; tick(); });
+  $("btnPause").addEventListener("click", function () {
+    paused = !paused;
+    $("btnPause").textContent = paused ? "\u25B6" : "\u23F8";
+    $("btnPause").className = paused ? "cbtn on" : "cbtn";
+    var stEl = $("state");
+    if (paused) { stEl.className = "state"; stEl.textContent = "已暂停"; $("dot").className = "dot"; }
+    else tick();
+  });
+  $("btnSpark").addEventListener("click", function () {
+    sparkOn = !sparkOn;
+    $("btnSpark").className = sparkOn ? "cbtn on" : "cbtn";
+    $("spark").className = sparkOn ? "spark on" : "spark";
+    if (!sparkOn) $("sparkline").setAttribute("points", "");
+  });
+
+  tick();
+  if (!paused) setInterval(function () { if (!paused) tick(); }, 1000);
+})();
+</script>
+</body>
+</html>

@@ -10,8 +10,10 @@ description: 查看 TPS 吞吐、延迟分位数、错误率与系统资源快�
 2. 如果用户给了数字参数(如 `/tps 10`),改用 `tps_watch` 并把 seconds 设为该数字(2-30 之间),展示采样统计(平均/峰值)。
 3. 若用户问的是 **token 速率**(而不是业务 TPS),改运行 token 速率脚本(本命令文件所在目录的 `../../scripts/token-rate.mjs`):
    - `node ../../scripts/token-rate.mjs` — 最近一次请求 + 会话累计;
-   - `node ../../scripts/token-rate.mjs --turn --current` — 最新一问(本问)的即时统计。
-4. 若 MCP 工具不可用,退回运行采集脚本:插件目录下 `scripts/collect.mjs`(即本技能 base directory 的 `../../scripts/collect.mjs`),加 `--watch N` 可采样观察。
+   - `node ../../scripts/token-rate.mjs --turn --current` — 最新一问(本问)的即时统计;
+   - `node ../../scripts/token-rate.mjs --sessions` — **所有会话**总览(每会话一行:速率/累计/生成中/活跃/空闲),适合用户问"各个会话都多快 / 哪些在跑"。
+4. 若用户想看**多会话实时监控大屏**,告知:运行 `node (插件目录)/dashboard/server.mjs` 后浏览器打开 `http://127.0.0.1:7423` —— 左侧为全部会话泳道、右侧为选中会话详情,每秒刷新。
+5. 若 MCP 工具不可用,退回运行采集脚本:插件目录下 `scripts/collect.mjs`(即本技能 base directory 的 `../../scripts/collect.mjs`),加 `--watch N` 可采样观察。
 
 展示要求:
 
