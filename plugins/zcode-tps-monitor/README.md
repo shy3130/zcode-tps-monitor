@@ -69,7 +69,7 @@
 | 技能 | `zcode-tps-monitor` | 用户询问速率/TPS 相关问题时自动触发 |
 | MCP 工具 | `tps_snapshot` / `tps_watch` | stdio MCP server(`mcp/tps-server.mjs`),供 agent 程序化取数 |
 | Stop 钩子(实验) | `hooks/stop.mjs` | 客户端现已触发 Stop 事件,但时机不定(观察到轮次进行中触发);默认只维护**本会话的**分状态文件且不覆盖提问时间戳、不写全局文件;`{"stopHookLine": true}` 可开启直显(每轮一次) |
-| 统计样式配置 | `~/.zcode/tps-monitor.config.json` | `statsStyle`:`card`(桌面端 Gen UI 卡片)/`line`(单行),默认按提交端 `client_mode` 自动;`statsFormat` 段微调单行:`wrap`(quote/code/plain/italic)、`sep`(bar/dot/mixed)、`clock`、`spark`、`sparkMax`(1-8) |
+| 统计样式配置 | `~/.zcode/tps-monitor.config.json` | `statsStyle`:`card`(桌面端 Gen UI 卡片)/`line`(单行),默认按提交端 `client_mode` 自动;`statsFormat` 段微调:`wrap`(quote 默认/code/plain/italic)、`sep`(dot 默认/bar)、`clock`;`spark`/`sparkMax` 为桌面卡片走势条开关 |
 
 ## 数据源
 
