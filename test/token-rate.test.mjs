@@ -112,49 +112,43 @@ test("本轮统计:按最新 turn_id 圈定,多段加权速率", () => {
   assert.equal(r.session.samples, 4);          // 会话累计仍是全会话口径
 });
 
-test("本轮文案:速率加粗、走势条、│ 分段、净/总、峰值并入输出", () => {
+test("本轮文案:经典版式(· 分隔、(本轮)、生成/总、N 段/峰、累计 tok)", () => {
   const line = formatTurnLine(queryTurn("s1"));
-  assert.match(line, /⚡ \*\*187\.5 tok\/s\*\*/);
+  assert.match(line, /⚡ 187\.5 tok\/s\(本轮\)/);
   assert.match(line, /首字 0\.5s/);
-  assert.match(line, /输出 320 tok · 峰 200/);
-  assert.match(line, /净 [\d.]+s \/ 总 [\d.]+s/);
-  assert.match(line, /累计 1\.8k/);
-  assert.match(line, /[▁▂▃▄▅▆▇█]{2,4}/, "方块字走势(≤4 段)");
-  assert.ok(!/×\d/.test(line), "不再显示 ×N 段数计数");
-  assert.ok((line.match(/ │ /g) || []).length >= 4, "细竖线分段");
+  assert.match(line, /输出 320 tok \/ 生成 1\.6s \/ 总 [\d.]+s/);
+  assert.match(line, /3 段 \/ 峰 200/);
+  assert.match(line, /累计 1\.8k tok/);
+  assert.ok(!line.includes("**"), "经典版式无加粗");
+  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(line), "默认无走势条");
+  assert.ok(line.includes(" · "), "· 分隔");
 });
 
-test("统计行可配置:sep 分隔符 / clock 开关 / spark 开关 / code 风去加粗", () => {
+test("统计行可配置:sep 竖线 / spark 开关 / clock 开关", () => {
   const r = queryTurn("s1");
-  const base = { wrap: "quote", sep: "bar", clock: true, spark: true, sparkMax: 4 };
-  const dot = formatTurnLine(r, { ...base, sep: "dot", clock: false });
-  assert.ok(dot.includes(" · 首字"), "dot 分隔");
-  assert.ok(!dot.includes("⏱"), "clock=false 去时刻");
-  assert.match(dot, /\*\*187\.5 tok\/s\*\*/, "quote 风保留加粗");
-  const code = formatTurnLine(r, { ...base, wrap: "code", sep: "mixed" });
-  assert.match(code, /tok\/s.*│ 首字 .* · 输出/, "mixed=头部│其余·");
-  assert.ok(!code.includes("**"), "code 风去加粗(代码内星号不渲染)");
-  assert.ok(code.includes("⏱"));
-  const noSpark = formatTurnLine(r, { ...base, spark: false });
-  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(noSpark), "spark=false 无走势条");
-  const plain = formatTurnLine(r, { ...base, wrap: "plain", sep: "bar", clock: false });
-  assert.match(plain, /⚡ \*\*187\.5 tok\/s\*\*/);
+  const withSpark = { ...r, turn: { ...r.turn, spark: "▂█▇" } };
+  const base = { wrap: "quote", sep: "dot", clock: true, spark: false, sparkMax: 4 };
+  assert.ok(formatTurnLine(withSpark, { ...base, sep: "bar" }).includes(" │ "), "bar=竖线分隔");
+  assert.ok(/[▁▂▃▄▅▆▇█]{2,}/.test(formatTurnLine(withSpark, { ...base, spark: true })), "spark 开启显示走势条");
+  assert.ok(!/[▁▂▃▄▅▆▇█]/.test(formatTurnLine(r, base)), "默认无走势条");
+  assert.ok(!formatTurnLine(withSpark, { ...base, clock: false }).includes("⏱"), "clock=false 去时刻");
 });
 
 test("本轮表格:三行 GFM、八列齐全、速率加粗、无数据时为空串", () => {
-  const tbl = formatTurnTable(queryTurn("s1"));
+  const rr = { ...queryTurn("s1"), turn: { ...queryTurn("s1").turn, spark: "▂▇▃" } };
+  const tbl = formatTurnTable(rr);
   const rows = tbl.split("\n");
   assert.equal(rows.length, 3, "表头 + 分隔 + 数据行");
   assert.match(rows[0], /^\| ⚡ 本轮 \| 走势 \| 首字 \| 输出 \| 峰值 \| 净 \/ 总 \| 会话累计 \| ⏱ \|$/);
   assert.match(rows[1], /^\|:---:\|:---:\|:---:\|:---:\|:---:\|:---:\|:---:\|:---:\|$/);
   assert.match(rows[2], /\*\*187\.5\*\* tok\/s/);
-  assert.match(rows[2], /×3/);
+  assert.match(rows[2], /▂▇▃ ×3/, "走势单元格(注入 spark)");
   assert.match(rows[2], /1\.8k tok/);
   assert.equal(formatTurnTable({ turn: null }), "");
 });
 
 test("本轮卡片:静态片段、竖条数=spark 段数、主题变量、无 turn 为空串", () => {
-  const r = queryTurn("s1");
+  const r = { ...queryTurn("s1"), turn: { ...queryTurn("s1").turn, spark: "▂▇▃" } };
   const card = buildTurnCard(r);
   assert.equal(buildTurnCard({ turn: null }), "");
   assert.match(card, /id="tps-turn-stats"/);

@@ -1,6 +1,6 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Token output-rate monitor for ZCode: shows real instant tokens/sec (from the ZCode usage DB) for the current question at the end of each tool-using reply — never the previous turn — plus a /tps command with an all-sessions overview (--sessions), MCP tools, and a multi-session real-time dashboard (one lane per session, no overlay window needed); also supports service-TPS monitoring via a configurable metrics URL or demo data.",
   "description_i18n": {
     "en": "Token rate monitor: per-question instant tokens/sec from the ZCode usage DB, shown at the end of each tool-using reply; /tps command with all-sessions overview, MCP tools, and a multi-session real-time dashboard (one lane per session). Supports a real metrics URL or built-in demo data for service TPS.",
