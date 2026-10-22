@@ -10,15 +10,15 @@
 ⚡ **71.2 tok/s** · 首字 9.9s · 4 段 · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
 ```
 
-![统计行渲染效果](docs/effect-line.png)
+![统计行渲染效果](docs/effect-line-2x.png)
 
 **① 回复结尾统计 · 桌面端**(Gen UI 卡片,自动;一条命令静默落盘):
 
-![回复结尾统计卡片](docs/effect-turn-card.png)
+![回复结尾统计卡片](docs/effect-turn-card-2x.png)
 
 **② 多会话实时大屏**(每会话一条泳道,点击聚焦详情):
 
-![多会话监控大屏](docs/effect-dashboard-sessions.png)
+![多会话监控大屏](docs/effect-dashboard-2x.png)
 
 **③ 桌面悬浮窗(可选)**:macOS 置顶小窗(常规/单行两种形态)、Windows 文字悬浮条:
 
@@ -169,8 +169,8 @@ zcode-tps-monitor/
 │   ├── lib/collect-core.mjs    # 采集核心(CLI/MCP 共用,零依赖)
 │   └── lib/session.mjs         # 会话解析(cwd → session 表)与状态文件读写(共用)
 └── docs/
-    ├── effect-turn-card.png           # 回复结尾统计卡片(桌面端 Gen UI)
-    ├── effect-dashboard-sessions.png  # 多会话大屏
+    ├── effect-turn-card-2x.png           # 回复结尾统计卡片(桌面端 Gen UI)
+    ├── effect-dashboard-2x.png  # 多会话大屏
     ├── effect-overlay-macos.png       # macOS 悬浮窗(常规)
     └── effect-overlay-line.png        # macOS 悬浮窗(单行模式)
 ```

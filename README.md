@@ -20,11 +20,11 @@
 ⚡ **71.2 tok/s** · 首字 9.9s · 4 段 · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
 ```
 
-![统计行渲染效果](plugins/zcode-tps-monitor/docs/effect-line.png)
+![统计行渲染效果](plugins/zcode-tps-monitor/docs/effect-line-2x.png)
 
 桌面端提问 → 回复末尾渲染**会话内统计卡片**(速率大数字、各段走势竖条、指标组):
 
-![回复结尾统计卡片(桌面端)](plugins/zcode-tps-monitor/docs/effect-turn-card.png)
+![回复结尾统计卡片(桌面端)](plugins/zcode-tps-monitor/docs/effect-turn-card-2x.png)
 
 | 字段 | 含义 |
 |---|---|
@@ -42,7 +42,7 @@
 
 `/zcode-tps-monitor:dashboard` 一键拉起。**每个会话一条泳道**(生成中 / 活跃 / 空闲三态、迷你走势、即时速率、终身累计),点击聚焦任一会话查看详情与全量速率曲线;秒级刷新,隐藏标签页自动暂停:
 
-![多会话监控大屏](plugins/zcode-tps-monitor/docs/effect-dashboard-sessions.png)
+![多会话监控大屏](plugins/zcode-tps-monitor/docs/effect-dashboard-2x.png)
 
 ### ③ 全会话总览(命令行)
 
