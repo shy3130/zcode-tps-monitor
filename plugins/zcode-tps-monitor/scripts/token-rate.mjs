@@ -29,7 +29,7 @@ import { readGlobalState, globalSessionIdMatchingCwd, resolveSessionIdByCwd, las
 //   wrap: "code"|"quote"|"plain"|"italic"  包裹样式(行内代码胶囊/引用块/裸行/斜体;
 //         默认 code——模型按钩子指令把整行包进反引号;代码内不渲染加粗,
 //         wrap=code 时脚本不输出 **)
-//   sep:  "bar"|"dot"                      分隔符(│ / ·)
+//   sep:  "dot"|"bar"                      分隔符(· / │,默认 ·)
 //   clock: true|false                      行尾 ⏱ 时刻
 //   spark: true|false                      方块字走势条(默认开)
 //   sparkMax: 1-8                          走势条最多段数
@@ -46,7 +46,7 @@ function normalizeStatsCfg(raw) {
   const f = raw && typeof raw === "object" && raw.statsFormat ? raw.statsFormat : {};
   return {
     wrap: ["code", "quote", "plain", "italic"].includes(f.wrap) ? f.wrap : "code",
-    sep: f.sep === "dot" ? "dot" : "bar",
+    sep: f.sep === "bar" ? "bar" : "dot",
     clock: f.clock !== false,
     spark: f.spark !== false,
     sparkMax: Math.min(8, Math.max(1, Number(f.sparkMax) || 4)),
