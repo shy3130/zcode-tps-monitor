@@ -26,9 +26,9 @@ import path from "node:path";
 import { readGlobalState, globalSessionIdMatchingCwd, resolveSessionIdByCwd, lastPromptTs } from "./lib/session.mjs";
 
 // --- 统计行可配置项(~/.zcode/tps-monitor.config.json 的 "statsFormat" 段)---
-//   wrap: "code"|"quote"|"plain"|"italic"  包裹样式(行内代码胶囊/引用块/裸行/斜体;
-//         默认 code——模型按钩子指令把整行包进反引号;代码内不渲染加粗,
-//         wrap=code 时脚本不输出 **)
+//   wrap: "quote"|"code"|"plain"|"italic"  包裹样式(引用块(带加粗)/行内代码胶囊/
+//         裸行/斜体;默认 quote——模型按钩子指令把整行放 Markdown 引用块;
+//         code 内不渲染加粗,wrap=code 时脚本不输出 **)
 //   sep:  "dot"|"bar"                      分隔符(· / │,默认 ·)
 //   clock: true|false                      行尾 ⏱ 时刻
 //   spark: true|false                      方块字走势条(默认开)
@@ -45,7 +45,7 @@ function readStatsConfig() {
 function normalizeStatsCfg(raw) {
   const f = raw && typeof raw === "object" && raw.statsFormat ? raw.statsFormat : {};
   return {
-    wrap: ["code", "quote", "plain", "italic"].includes(f.wrap) ? f.wrap : "code",
+    wrap: ["quote", "code", "plain", "italic"].includes(f.wrap) ? f.wrap : "quote",
     sep: f.sep === "bar" ? "bar" : "dot",
     clock: f.clock !== false,
     spark: f.spark !== false,
@@ -545,8 +545,8 @@ function fmtDur(ms) {
 }
 
 // 本问统计行(回复收尾自测、Stop 钩子共用;可配置项见文件头 statsFormat 说明):
-// 结构(0.10.0 版,用户确认保留):速率(+走势) │ 首字 │ 输出·峰 │ 累计 │ 净/总(在累计后)│ ⏱;
-// 默认 wrap=code:整行由模型包进 Markdown 行内代码(代码内不渲染加粗,脚本随之不输出 **)
+// 结构(0.10.0 版,用户确认保留):速率(+走势) · 首字 · 输出·峰 · 累计 · 净/总(在累计后)· ⏱;
+// 默认 wrap=quote:整行放 Markdown 引用块,速率加粗;wrap=code 时不输出 **(代码内不渲染)
 function formatTurnLine(r, cfg = STATS_CFG) {
   const t = r.turn;
   if (!t) return "暂无本轮请求记录";

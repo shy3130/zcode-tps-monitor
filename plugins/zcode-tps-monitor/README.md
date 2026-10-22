@@ -7,7 +7,7 @@
 **① 回复结尾统计 · 手机/网页/CLI**(代码风单行,自动;整行包反引号渲染为代码胶囊):
 
 ```text
-⚡ 71.2 tok/s ▂██▁ · 首字 9.9s · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
+⚡ **71.2 tok/s** ▂██▁ · 首字 9.9s · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
 ```
 
 **① 回复结尾统计 · 桌面端**(Gen UI 卡片,自动;一条命令静默落盘):
@@ -33,8 +33,8 @@
   "tokenRateLine": true,
   "statsStyle": "card",
   "statsFormat": {
-    "wrap": "code",
-    "sep": "bar",
+    "wrap": "quote",
+    "sep": "dot",
     "clock": true,
     "spark": true,
     "sparkMax": 4
@@ -47,7 +47,7 @@
 |---|---|---|
 | `tokenRateLine` | `true` / `false` | 总开关:`false` 关闭全部速率注入(含收尾统计) |
 | `statsStyle` | `card` / `line` | 收尾统计形态:桌面端 Gen UI 卡片 / Markdown 单行;不配置时按提交端 `client_mode` 自动(桌面→卡片,手机/网页/CLI→单行) |
-| `statsFormat.wrap` | `code` / `quote` / `plain` / `italic` | 单行包裹:行内代码胶囊(默认,等宽+底色,不加粗)/ 引用块(恢复加粗)/ 裸行 / 斜体 |
+| `statsFormat.wrap` | `quote` / `code` / `plain` / `italic` | 单行包裹:引用块(默认,速率加粗)/ 行内代码胶囊(等宽+底色,不加粗)/ 裸行 / 斜体 |
 | `statsFormat.sep` | `dot` / `bar` | 单行分隔符:`·`(默认)/ `│` |
 | `statsFormat.clock` | `true` / `false` | 行尾 ⏱ 时刻 |
 | `statsFormat.spark` | `true` / `false` | 方块字走势条(默认开);`sparkMax` 限段数(1–8,默认 4) |

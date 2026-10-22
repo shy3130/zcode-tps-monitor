@@ -112,10 +112,9 @@ test("本轮统计:按最新 turn_id 圈定,多段加权速率", () => {
   assert.equal(r.session.samples, 4);          // 会话累计仍是全会话口径
 });
 
-test("本轮文案:默认代码风结构(无加粗、走势条、· 分隔、净/总在累计后)", () => {
+test("本轮文案:默认引用块结构(速率加粗、走势条、· 分隔、净/总在累计后)", () => {
   const line = formatTurnLine(queryTurn("s1"));
-  assert.match(line, /⚡ 187\.5 tok\/s /, "代码风不加粗");
-  assert.ok(!line.includes("**"), "默认 wrap=code 无 **");
+  assert.match(line, /⚡ \*\*187\.5 tok\/s\*\*/, "quote 默认加粗");
   assert.match(line, /首字 0\.5s/);
   assert.match(line, /输出 320 tok · 峰 200/);
   assert.match(line, /累计 1\.8k .*净 [\d.]+s \/ 总 [\d.]+s/, "净/总在累计之后");
@@ -124,10 +123,10 @@ test("本轮文案:默认代码风结构(无加粗、走势条、· 分隔、净
   assert.ok(!line.includes(" │ "), "默认无竖线");
 });
 
-test("统计行可配置:quote 恢复加粗 / sep 竖线 / spark 开关 / clock 开关", () => {
+test("统计行可配置:code 去加粗 / sep 竖线 / spark 开关 / clock 开关", () => {
   const r = queryTurn("s1");
-  const base = { wrap: "code", sep: "dot", clock: true, spark: true, sparkMax: 4 };
-  assert.match(formatTurnLine(r, { ...base, wrap: "quote" }), /\*\*187\.5 tok\/s\*\*/, "quote 恢复加粗");
+  const base = { wrap: "quote", sep: "dot", clock: true, spark: true, sparkMax: 4 };
+  assert.ok(!formatTurnLine(r, { ...base, wrap: "code" }).includes("**"), "code 不加粗");
   assert.ok(formatTurnLine(r, { ...base, sep: "bar" }).includes(" │ 首字"), "bar=竖线分隔");
   assert.ok(!/[▁▂▃▄▅▆▇█]/.test(formatTurnLine(r, { ...base, spark: false })), "spark 关");
   assert.ok(!formatTurnLine(r, { ...base, clock: false }).includes("⏱"), "clock 关");

@@ -17,7 +17,7 @@
 手机 / 网页 / CLI 提问 → 同样的数据以**代码风单行**收尾(整行包反引号,渲染为等宽代码胶囊):
 
 ```text
-⚡ 71.2 tok/s ▂██▁ · 首字 9.9s · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
+⚡ **71.2 tok/s** ▂██▁ · 首字 9.9s · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
 ```
 
 桌面端提问 → 回复末尾渲染**会话内统计卡片**(速率大数字、各段走势竖条、指标组):
@@ -107,8 +107,8 @@ $ node plugins/zcode-tps-monitor/scripts/token-rate.mjs --sessions
 {
   "statsStyle": "card",
   "statsFormat": {
-    "wrap": "code",
-    "sep": "bar",
+    "wrap": "quote",
+    "sep": "dot",
     "clock": true,
     "spark": true,
     "sparkMax": 4
@@ -118,7 +118,7 @@ $ node plugins/zcode-tps-monitor/scripts/token-rate.mjs --sessions
 
 - **`statsStyle`**:`card`(桌面端 Gen UI 卡片)/ `line`(单行)。不配置时按提交端自动——桌面端用卡片,手机/网页/CLI 用单行
 - **`statsFormat`(微调单行,默认即代码风)**:
-  - `wrap`:`code` 行内代码胶囊(默认,等宽 + 底色)/ `quote` 引用块(恢复加粗)/ `plain` 裸行 / `italic` 斜体
+  - `wrap`:`quote` 引用块(默认,速率加粗)/ `code` 行内代码胶囊(等宽 + 底色,不加粗)/ `plain` 裸行 / `italic` 斜体
   - `sep`:`dot` 中点 `·`(默认)/ `bar` 竖线 `│`
   - `clock`:行尾 ⏱ 时刻开关
   - `spark`:走势条开关(默认开);`sparkMax` 限段数(1–8,默认 4)
