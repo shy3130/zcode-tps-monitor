@@ -31,8 +31,8 @@ import { readGlobalState, globalSessionIdMatchingCwd, resolveSessionIdByCwd, las
 //         code 内不渲染加粗,wrap=code 时脚本不输出 **)
 //   sep:  "dot"|"bar"                      分隔符(· / │,默认 ·)
 //   clock: true|false                      行尾 ⏱ 时刻
-//   spark: true|false                      方块字走势条(默认开)
-//   sparkMax: 1-8                          走势条最多段数
+//   spark: true|false                      桌面卡片走势条开关(默认开;单行只显示段数)
+//   sparkMax: 1-8                          卡片走势条最多段数
 function readStatsConfig() {
   try {
     return JSON.parse(
@@ -545,19 +545,20 @@ function fmtDur(ms) {
 }
 
 // 本问统计行(回复收尾自测、Stop 钩子共用;可配置项见文件头 statsFormat 说明):
-// 结构(0.10.0 版,用户确认保留):速率(+走势) · 首字 · 输出·峰 · 累计 · 净/总(在累计后)· ⏱;
-// 默认 wrap=quote:整行放 Markdown 引用块,速率加粗;wrap=code 时不输出 **(代码内不渲染)
+// 结构(用户确认):速率 · 首字 · N 段(单段不显示)· 输出·峰 · 累计 · 净/总(在累计后)· ⏱;
+// 默认 wrap=quote(引用块,速率加粗);wrap=code 不输出 **。走势柱不进单行(桌面卡片才有),
+// 单行只给段数
 function formatTurnLine(r, cfg = STATS_CFG) {
   const t = r.turn;
   if (!t) return "暂无本轮请求记录";
   const time = new Date(t.lastAt).toLocaleTimeString("zh-CN", { hour12: false });
   const rate = `${t.tokPerSec ?? "-"} tok/s`;
   const head = [`⚡ ${cfg.wrap === "code" ? rate : `**${rate}**`}`];
-  if (cfg.spark && t.spark) head.push(t.spark);
   const seg = [
     `首字 ${t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) + "s" : "-"}`,
-    `输出 ${fmtNum(t.totalOutput)}${t.totalReasoning ? `(+${fmtNum(t.totalReasoning)} 思考)` : ""} tok${t.requests > 1 ? ` · 峰 ${t.peak ?? "-"}` : ""}`,
   ];
+  if (t.requests > 1) seg.push(`${t.requests} 段`);
+  seg.push(`输出 ${fmtNum(t.totalOutput)}${t.totalReasoning ? `(+${fmtNum(t.totalReasoning)} 思考)` : ""} tok${t.requests > 1 ? ` · 峰 ${t.peak ?? "-"}` : ""}`);
   if (r.session) seg.push(`累计 ${fmtCompact(r.session.totalOutput + r.session.totalReasoning)}`);
   seg.push(`净 ${t.genMs > 0 ? fmtDur(t.genMs) : "-"} / 总 ${t.totalMs != null ? fmtDur(t.totalMs) : "-"}`);
   if (cfg.clock) seg.push(`⏱ ${time}`);
