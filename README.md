@@ -38,7 +38,7 @@
 
 `/zcode-tps-monitor:dashboard` 一键拉起。**每个会话一条泳道**(生成中 / 活跃 / 空闲三态、迷你走势、即时速率、终身累计),点击聚焦任一会话查看详情与全量速率曲线;秒级刷新,隐藏标签页自动暂停:
 
-![多会话监控大屏](plugins/zcode-tps-monitor/docs/effect-dashboard-v2.png)
+![多会话监控大屏](plugins/zcode-tps-monitor/docs/effect-dashboard-v3.png)
 
 ### ③ 全会话总览(命令行)
 
