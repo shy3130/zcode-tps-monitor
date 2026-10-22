@@ -16,11 +16,7 @@
 
 手机 / 网页 / CLI 提问 → 同样的数据以**引用块单行**收尾(速率加粗、中点分隔):
 
-```text
-⚡ **71.2 tok/s** · 首字 9.9s · 4 段 · 输出 15,150 tok · 峰 108.1 · 累计 273k · 净 3m26s / 总 2m32s · ⏱ 09:50:45
-```
-
-![统计行渲染效果](plugins/zcode-tps-monitor/docs/effect-line-2x.png)
+![统计行渲染效果](plugins/zcode-tps-monitor/docs/effect-line-v2.png)
 
 桌面端提问 → 回复末尾渲染**会话内统计卡片**(速率大数字、各段走势竖条、指标组):
 
