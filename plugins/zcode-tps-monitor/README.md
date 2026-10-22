@@ -14,7 +14,7 @@
 
 **② 多会话实时大屏**(每会话一条泳道,点击聚焦详情):
 
-![多会话监控大屏](docs/effect-dashboard-2x.png)
+![多会话监控大屏](docs/effect-dashboard-v2.png)
 
 **③ 桌面悬浮窗(可选)**:macOS 置顶小窗(常规/单行两种形态)、Windows 文字悬浮条:
 
@@ -166,7 +166,7 @@ zcode-tps-monitor/
 │   └── lib/session.mjs         # 会话解析(cwd → session 表)与状态文件读写(共用)
 └── docs/
     ├── effect-turn-card-2x.png           # 回复结尾统计卡片(桌面端 Gen UI)
-    ├── effect-dashboard-2x.png  # 多会话大屏
+    ├── effect-dashboard-v2.png  # 多会话大屏
     ├── effect-overlay-macos.png       # macOS 悬浮窗(常规)
     └── effect-overlay-line.png        # macOS 悬浮窗(单行模式)
 ```
