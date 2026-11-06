@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Token 速率 · 每会话 · ZCode 实时监控</title>
+<script>
+  /* 主题预置:样式应用前读持久化选择,避免日间用户看到暗色闪屏 */
+  try {
+    var t = localStorage.getItem("zcode-tps-theme");
+    if (t === "light" || (t !== "dark" && matchMedia("(prefers-color-scheme: light)").matches))
+      document.documentElement.dataset.theme = "light";
+  } catch (e) {}
+</script>
 <style>
   /* Ethereal Glass:深空底色 + 双圈嵌套(double-bezel)卡片 + 原生高级字体栈。
      性能铁律:动画只走 transform/opacity;列表容器不加滤镜;隐藏标签页即停轮询。 */
@@ -15,7 +23,45 @@
     --core: rgba(255, 255, 255, .035); --core2: rgba(255, 255, 255, .06);
     --ease: cubic-bezier(.32, .72, 0, 1);
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    color-scheme: dark;
+    /* 曲线画布取色(日间主题只覆盖变量,画布每帧现读) */
+    --chart-grid: rgba(255, 255, 255, .06);
+    --chart-label: rgba(178, 188, 208, .9);
+    --chart-empty: rgba(154, 164, 187, .55);
+    --chart-soft: rgba(52, 211, 153, .28);
+    --chart-avg: rgba(96, 165, 250, .5);
   }
+  /* 日间主题:只覆盖变量与少量写死的表面色;夜间为默认,零改动 */
+  html[data-theme="light"] {
+    color-scheme: light;
+    --bg: #eef1f6;
+    --ink: #1b2333; --dim: #55607a; --faint: #8b95ab;
+    --em: #0c8f63; --bl: #2f6fd6; --am: #b07a12; --rd: #d9486f;
+    --hair: rgba(23, 32, 51, .09); --hair2: rgba(23, 32, 51, .16);
+    --core: rgba(23, 32, 51, .035); --core2: rgba(23, 32, 51, .06);
+    --chart-grid: rgba(23, 32, 51, .09);
+    --chart-label: rgba(43, 54, 76, .9);
+    --chart-empty: rgba(85, 96, 122, .6);
+    --chart-soft: rgba(12, 143, 99, .2);
+    --chart-avg: rgba(47, 111, 214, .45);
+  }
+  html[data-theme="light"] body::before {
+    background:
+      radial-gradient(42rem 30rem at 12% -6%, rgba(12, 143, 99, .06), transparent 60%),
+      radial-gradient(46rem 34rem at 96% 108%, rgba(99, 102, 241, .07), transparent 62%);
+  }
+  html[data-theme="light"] .chip,
+  html[data-theme="light"] .panel { background: rgba(255, 255, 255, .55); }
+  html[data-theme="light"] .chip .in,
+  html[data-theme="light"] .panel .inner { box-shadow: inset 0 1px 1px rgba(255, 255, 255, .7); }
+  html[data-theme="light"] .dchips .c,
+  html[data-theme="light"] .sys,
+  html[data-theme="light"] .chartbox { background: rgba(255, 255, 255, .55); }
+  html[data-theme="light"] .lanes { scrollbar-color: rgba(23, 32, 51, .22) transparent; }
+  html[data-theme="light"] .follow:hover,
+  html[data-theme="light"] .theme-toggle:hover { border-color: rgba(23, 32, 51, .35); }
+  html[data-theme="light"] .lane .dot { background: #b9c2d4; }
+  html[data-theme="light"] .lane.idl .spark { color: #98a2b8; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
@@ -80,6 +126,15 @@
     transition: color .3s var(--ease), border-color .3s var(--ease), transform .3s var(--ease);
   }
   .follow:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); transform: translateY(-1px); }
+
+  /* 主题切换按钮:与 .follow 同一设计语言 */
+  .theme-toggle {
+    display: block; margin: 0 0 8px auto; font: inherit; font-size: 11px; letter-spacing: .08em;
+    color: var(--dim); background: var(--core); border: 1px solid var(--hair2); border-radius: 999px;
+    padding: 4px 12px; cursor: pointer;
+    transition: color .3s var(--ease), border-color .3s var(--ease), transform .3s var(--ease);
+  }
+  .theme-toggle:hover { color: var(--ink); border-color: rgba(255, 255, 255, .3); transform: translateY(-1px); }
 
   /* 泳道行 */
   .lanes { display: flex; flex-direction: column; gap: 6px; max-height: min(62vh, 680px); overflow-y: auto; padding: 0 12px 4px 2px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; }
@@ -172,6 +227,7 @@
       <h1>Token 速率 <span class="thin">· 每会话</span></h1>
     </div>
     <div class="clockbox">
+      <button class="theme-toggle" id="themeBtn" type="button">🌙 夜间</button>
       <div class="clock" id="clock">--:--:--</div>
       <div class="live" id="live"><span class="dot"></span><span id="liveTxt">连接中</span></div>
     </div>
@@ -235,6 +291,22 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const HIST_SPARK = 20; // 泳道迷你曲线取最近 20 段
+
+/* ---------- 日间/夜间主题 ---------- */
+const themeBtn = $("themeBtn");
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === "light" ? "🌙 夜间" : "☀️ 日间";
+  themeBtn.title = t === "light" ? "切换到夜间模式" : "切换到日间模式";
+}
+let theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+applyTheme(theme);
+themeBtn.addEventListener("click", () => {
+  theme = theme === "light" ? "dark" : "light";
+  try { localStorage.setItem("zcode-tps-theme", theme); } catch {}
+  applyTheme(theme);
+  chartSig = ""; drawChart(); // 曲线颜色随主题重取
+});
 
 const fmtCompact = (n) => {
   if (n == null) return "--";
@@ -346,6 +418,19 @@ $("follow").addEventListener("click", () => { focusLock = false; $("follow").hid
 const stateTxt = { generating: "生成中", active: "活跃", idle: "空闲" };
 let chartHist = [], chartSig = "";
 
+// 画布取色:每次绘制现读 CSS 变量,主题切换即生效(不缓存,避免主题状态滞留)
+function chartPalette() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    grid: s.getPropertyValue("--chart-grid").trim() || "rgba(255,255,255,.06)",
+    label: s.getPropertyValue("--chart-label").trim() || "rgba(178,188,208,.9)",
+    empty: s.getPropertyValue("--chart-empty").trim() || "rgba(154,164,187,.55)",
+    soft: s.getPropertyValue("--chart-soft").trim() || "rgba(52,211,153,.28)",
+    avg: s.getPropertyValue("--chart-avg").trim() || "rgba(96,165,250,.5)",
+    line: s.getPropertyValue("--em").trim() || "#34d399",
+  };
+}
+
 function drawChart() {
   const canvas = $("chart"), dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -354,9 +439,10 @@ function drawChart() {
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
+  const pal = chartPalette();
   const data = chartHist.filter((v) => v != null);
   if (data.length < 2) {
-    ctx.fillStyle = "rgba(154,164,187,.55)"; ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = pal.empty; ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
     ctx.fillText(data.length ? "样本不足,等待更多请求完成…" : "暂无速率样本", 12, h / 2);
     return;
   }
@@ -365,7 +451,7 @@ function drawChart() {
   const pad = (max - min) * 0.12 || 1; max += pad;
   const x = (i) => (i / (data.length - 1)) * (w - right);
   const y = (v) => h - bottom - ((v - min) / (max - min)) * (h - top - bottom);
-  ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.fillStyle = "rgba(178,188,208,.9)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = pal.grid; ctx.fillStyle = pal.label; ctx.lineWidth = 1;
   ctx.font = "11px " + getComputedStyle(document.body).fontFamily;
   for (let g = 0; g <= 3; g++) {
     const gy = top + ((h - top - bottom) * g) / 3;
@@ -373,20 +459,20 @@ function drawChart() {
     ctx.fillText(Math.round(max - ((max - min) * g) / 3), w - right + 8, gy + 3);
   }
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, "rgba(52,211,153,.28)"); grad.addColorStop(1, "rgba(52,211,153,0)");
+  grad.addColorStop(0, pal.soft); grad.addColorStop(1, pal.soft.replace(/,\s*[\d.]+\)$/, ",0)")); // 同色透明收尾
   ctx.beginPath();
   data.forEach((v, i) => { const px = x(i), py = y(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
   ctx.lineTo(x(data.length - 1), h - bottom); ctx.lineTo(x(0), h - bottom); ctx.closePath();
   ctx.fillStyle = grad; ctx.fill();
   ctx.beginPath();
   data.forEach((v, i) => { const px = x(i), py = y(v); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
-  ctx.strokeStyle = "#34d399"; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
+  ctx.strokeStyle = pal.line; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
   const avg = data.reduce((a, b) => a + b, 0) / data.length;
-  ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = "rgba(96,165,250,.5)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = pal.avg; ctx.lineWidth = 1;
   ctx.moveTo(0, y(avg)); ctx.lineTo(w - right, y(avg)); ctx.stroke(); ctx.setLineDash([]);
   const lx = x(data.length - 1), ly = y(data[data.length - 1]);
-  ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, Math.PI * 2); ctx.fillStyle = "#34d399"; ctx.fill();
-  ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI * 2); ctx.strokeStyle = "rgba(52,211,153,.35)"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(lx, ly, 3.2, 0, Math.PI * 2); ctx.fillStyle = pal.line; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx, ly, 7, 0, Math.PI * 2); ctx.strokeStyle = pal.soft; ctx.stroke();
 }
 
 function renderDetail(s) {

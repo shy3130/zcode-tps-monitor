@@ -1,5 +1,11 @@
 # Changelog
 
+## 未发布
+
+### 新增:监控大屏日间/夜间主题切换
+- 右上角时钟上方新增切换按钮(☀️ 日间 / 🌙 夜间),点击即切换,选择持久化到 `localStorage`(键 `zcode-tps-theme`);首次访问跟随系统 `prefers-color-scheme`。预置脚本在样式应用前写入主题,日间用户不再看到暗色闪屏。
+- 日间主题只覆盖 `:root` 变量与少量写死的表面色(卡片底、滚动条、光晕、空闲点色),夜间为默认零改动;曲线画布改为每次绘制现读 CSS 变量取色(新增 `--chart-grid/--chart-label/--chart-empty/--chart-soft/--chart-avg`),切换即重绘,无主题状态滞留。性能铁律不破:新增的过渡仍只有 transform/opacity/border-color/color。
+
 ## 0.10.5 — 2026-10-22
 
 ### 调整:单行不显示走势柱,改为段数
