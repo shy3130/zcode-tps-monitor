@@ -21,9 +21,24 @@
 
 ## Screenshots
 
-| Chinese tooltip | English tooltip |
-| --- | --- |
-| <img src="assets/tps-hover-zh.png" width="320" alt="Chinese TPS tooltip and composer status in ZCode"> | <img src="assets/tps-hover-en.png" width="320" alt="English TPS tooltip and composer status in ZCode"> |
+### ZCode composer toolbar
+
+The **waveform and `tok/s`** sit at the bottom of the ZCode composer, to the left of the context usage indicator. Hover to see statistics for the current turn.
+
+[![ZCode conversation, full composer, and English TPS tooltip](assets/tps-hover-en.png)](assets/tps-hover-en.png)
+
+[View the full ZCode window](assets/tps-window-en.jpg)
+
+<details>
+<summary>View the Chinese interface</summary>
+
+[![ZCode conversation, full composer, and Chinese TPS tooltip](assets/tps-hover-zh.png)](assets/tps-hover-zh.png)
+
+[View the full ZCode window](assets/tps-window-zh.jpg)
+
+</details>
+
+### Multi-session dashboard
 
 | Chinese dashboard | English dashboard |
 | --- | --- |

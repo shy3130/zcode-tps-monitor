@@ -21,9 +21,24 @@
 
 ## 效果预览
 
-| 中文悬停卡片 | English tooltip |
-| --- | --- |
-| <img src="assets/tps-hover-zh.png" width="320" alt="ZCode 中文悬停卡片与波形底栏"> | <img src="assets/tps-hover-en.png" width="320" alt="English TPS tooltip and composer status in ZCode"> |
+### ZCode 输入框底栏
+
+**波形和 `tok/s`** 位于 ZCode 输入框底部，在上下文用量图标左侧。悬停可查看本轮统计。
+
+[![ZCode 会话、完整输入框和中文 TPS 统计卡片](assets/tps-hover-zh.png)](assets/tps-hover-zh.png)
+
+[查看完整 ZCode 窗口](assets/tps-window-zh.jpg)
+
+<details>
+<summary>查看英文界面</summary>
+
+[![ZCode 会话、完整输入框和英文 TPS 统计卡片](assets/tps-hover-en.png)](assets/tps-hover-en.png)
+
+[查看完整 ZCode 窗口](assets/tps-window-en.jpg)
+
+</details>
+
+### 多会话监控面板
 
 | 中文监控面板 | English dashboard |
 | --- | --- |
