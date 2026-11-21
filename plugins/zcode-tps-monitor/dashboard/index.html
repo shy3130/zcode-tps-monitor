@@ -223,8 +223,8 @@
 <div class="shell">
   <header class="top reveal" style="--d:.02s">
     <div>
-      <div class="eyebrow">ZCode · 实时监控</div>
-      <h1>Token 速率 <span class="thin">· 每会话</span></h1>
+      <div class="eyebrow" data-i18n="eyebrow">ZCode · 实时监控</div>
+      <h1><span data-i18n="heading">Token 速率</span> <span class="thin" data-i18n="bySession">· 每会话</span></h1>
     </div>
     <div class="clockbox">
       <button class="theme-toggle" id="themeBtn" type="button">🌙 夜间</button>
@@ -234,16 +234,16 @@
   </header>
 
   <div class="stats reveal" style="--d:.1s">
-    <div class="chip"><div class="in"><div class="k">24h 内会话</div><div class="v" id="sTotal">--<i>个</i></div></div></div>
-    <div class="chip em"><div class="in"><div class="k">生成中</div><div class="v" id="sGen">--<i>个</i></div></div></div>
-    <div class="chip bl"><div class="in"><div class="k">活跃(10 分钟内)</div><div class="v" id="sAct">--<i>个</i></div></div></div>
-    <div class="chip am"><div class="in"><div class="k">各会话累计输出</div><div class="v" id="sCum">--<i>tok</i></div></div></div>
+    <div class="chip"><div class="in"><div class="k" data-i18n="sessions24h">24h 内会话</div><div class="v" id="sTotal">--<i data-i18n="sessionUnit">个</i></div></div></div>
+    <div class="chip em"><div class="in"><div class="k" data-i18n="generating">生成中</div><div class="v" id="sGen">--<i data-i18n="sessionUnit">个</i></div></div></div>
+    <div class="chip bl"><div class="in"><div class="k" data-i18n="active10m">活跃(10 分钟内)</div><div class="v" id="sAct">--<i data-i18n="sessionUnit">个</i></div></div></div>
+    <div class="chip am"><div class="in"><div class="k" data-i18n="allOutput">各会话累计输出</div><div class="v" id="sCum">--<i>tok</i></div></div></div>
   </div>
 
   <div class="main">
     <section class="panel reveal" style="--d:.18s">
       <div class="inner">
-        <div class="ptitle">会话泳道 <span class="n" id="laneCount"></span><span class="follow" id="follow" hidden>← 跟随最新</span></div>
+        <div class="ptitle"><span data-i18n="sessions">会话泳道</span> <span class="n" id="laneCount"></span><span class="follow" id="follow" data-i18n="follow" hidden>← 跟随最新</span></div>
         <div class="lanes" id="lanes"></div>
       </div>
     </section>
@@ -251,25 +251,25 @@
     <section class="panel reveal" style="--d:.26s">
       <div class="inner">
         <div class="dhead">
-          <span class="nm" id="dName">等待数据…</span>
-          <span class="state idl" id="dState">空闲</span>
+          <span class="nm" id="dName" data-i18n="waiting">等待数据…</span>
+          <span class="state idl" id="dState" data-i18n="idle">空闲</span>
           <span class="mdl" id="dModel"></span>
           <span class="dir" id="dDir"></span>
         </div>
         <div class="hero">
           <span class="big" id="dRate">--</span>
           <span class="unit">tok/s</span>
-          <span class="cap" id="dCap">本轮即时速率</span>
+          <span class="cap" id="dCap" data-i18n="turnRate">本轮即时速率</span>
         </div>
-        <div class="dsub" id="dSub">等待 usage 数据库返回…</div>
+        <div class="dsub" id="dSub" data-i18n="waitingUsage">等待 usage 数据库返回…</div>
         <div class="dchips">
-          <div class="c"><div class="k">近段均值</div><div class="v" id="cAvg">--</div></div>
-          <div class="c"><div class="k">近段峰值</div><div class="v" id="cMax">--</div></div>
-          <div class="c"><div class="k">会话累计输出</div><div class="v" id="cCum">--<i>tok</i></div></div>
-          <div class="c"><div class="k">会话请求数</div><div class="v" id="cReq">--<i>次</i></div></div>
+          <div class="c"><div class="k" data-i18n="recentAvg">近段均值</div><div class="v" id="cAvg">--</div></div>
+          <div class="c"><div class="k" data-i18n="recentPeak">近段峰值</div><div class="v" id="cMax">--</div></div>
+          <div class="c"><div class="k" data-i18n="sessionOutput">会话累计输出</div><div class="v" id="cCum">--<i>tok</i></div></div>
+          <div class="c"><div class="k" data-i18n="requests">会话请求数</div><div class="v" id="cReq">--<i data-i18n="requestUnit">次</i></div></div>
         </div>
         <div class="chartbox">
-          <div class="cap"><span>生成速率曲线</span><span id="chartCap"></span></div>
+          <div class="cap"><span data-i18n="chart">生成速率曲线</span><span id="chartCap"></span></div>
           <canvas id="chart"></canvas>
         </div>
       </div>
@@ -277,27 +277,135 @@
   </div>
 
   <div class="sys reveal" style="--d:.34s" id="sys">
-    <span>本机资源</span>
+    <span data-i18n="resources">本机资源</span>
     <span>CPU<b id="cpu">--%</b><span class="meter" id="cpuBar"><i></i></span></span>
-    <span>内存<b id="mem">--</b><span class="meter" id="memBar"><i></i></span></span>
-    <span>运行<b id="up">--</b></span>
+    <span><span data-i18n="memory">内存</span><b id="mem">--</b><span class="meter" id="memBar"><i></i></span></span>
+    <span><span data-i18n="uptime">运行</span><b id="up">--</b></span>
     <span id="plat"></span>
   </div>
 
-  <footer>每秒刷新 · 数据源:ZCode usage 数据库(真实)· 各会话独立统计 · 隐藏标签页时自动暂停</footer>
+  <footer data-i18n="footer">每秒刷新 · 数据源:ZCode usage 数据库(真实)· 各会话独立统计 · 隐藏标签页时自动暂停</footer>
 </div>
 
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 const HIST_SPARK = 20; // 泳道迷你曲线取最近 20 段
+const translations = {
+  "zh-CN": {
+    title: "Token 速率 · 每会话 · ZCode 实时监控",
+    eyebrow: "ZCode · 实时监控",
+    heading: "Token 速率",
+    bySession: "· 每会话",
+    night: "🌙 夜间",
+    day: "☀️ 日间",
+    switchNight: "切换到夜间模式",
+    switchDay: "切换到日间模式",
+    connecting: "连接中",
+    live: "实时",
+    disconnected: "连接断开",
+    sessions24h: "24h 内会话",
+    generating: "生成中",
+    active10m: "活跃(10 分钟内)",
+    allOutput: "各会话累计输出",
+    sessionUnit: "个",
+    sessions: "会话泳道",
+    follow: "← 跟随最新",
+    waiting: "等待数据…",
+    active: "活跃",
+    idle: "空闲",
+    turnRate: "本轮即时速率",
+    segmentRate: "最近一段速率",
+    waitingUsage: "等待 usage 数据库返回…",
+    recentAvg: "近段均值",
+    recentPeak: "近段峰值",
+    sessionOutput: "会话累计输出",
+    requests: "会话请求数",
+    requestUnit: "次",
+    chart: "生成速率曲线",
+    resources: "本机资源",
+    memory: "内存",
+    uptime: "运行",
+    footer: "每秒刷新 · 数据源:ZCode usage 数据库(真实)· 各会话独立统计 · 隐藏标签页时自动暂停",
+    cumulative: "累计",
+    noData: "无数据",
+    noSessions: "暂无会话",
+    noLanes: "暂无会话数据，可在 ZCode 里发一条消息",
+    noRequests: "该会话还没有已完成的模型请求",
+    waitingSamples: "样本不足，等待更多请求完成…",
+    noSamples: "暂无速率样本",
+    first: "首字",
+    output: "输出",
+    reasoning: "思考",
+    generation: "生成",
+    peak: "峰",
+    segmentUnit: () => "段",
+    recentSegments: (n) => `近 ${n} 段`,
+    hours: (n) => `${n} 小时`,
+    cores: (n) => `${n} 核`,
+  },
+  "en-US": {
+    title: "Token Rate by Session · ZCode TPS Monitor",
+    eyebrow: "ZCode · Live monitor",
+    heading: "Token Rate",
+    bySession: "· By session",
+    night: "🌙 Night",
+    day: "☀️ Day",
+    switchNight: "Switch to night mode",
+    switchDay: "Switch to day mode",
+    connecting: "Connecting",
+    live: "Live",
+    disconnected: "Disconnected",
+    sessions24h: "Sessions (24h)",
+    generating: "Generating",
+    active10m: "Active (10 min)",
+    allOutput: "Total output",
+    sessionUnit: "",
+    sessions: "Sessions",
+    follow: "← Follow latest",
+    waiting: "Waiting for data…",
+    active: "Active",
+    idle: "Idle",
+    turnRate: "Current turn rate",
+    segmentRate: "Latest segment rate",
+    waitingUsage: "Waiting for ZCode usage data…",
+    recentAvg: "Recent average",
+    recentPeak: "Recent peak",
+    sessionOutput: "Session output",
+    requests: "Session requests",
+    requestUnit: "",
+    chart: "Generation rate",
+    resources: "System resources",
+    memory: "Memory",
+    uptime: "Uptime",
+    footer: "Updates every second · ZCode usage database · Per-session stats · Pauses when hidden",
+    cumulative: "Total",
+    noData: "No data",
+    noSessions: "No sessions",
+    noLanes: "No sessions yet. Send a message in ZCode.",
+    noRequests: "No model requests have completed in this session",
+    waitingSamples: "Waiting for more samples…",
+    noSamples: "No rate samples",
+    first: "TTFT",
+    output: "Output",
+    reasoning: "reasoning",
+    generation: "Generation",
+    peak: "Peak",
+    segmentUnit: (n) => n === 1 ? "segment" : "segments",
+    recentSegments: (n) => `Last ${n} ${n === 1 ? "segment" : "segments"}`,
+    hours: (n) => `${n} h`,
+    cores: (n) => `${n} ${n === 1 ? "core" : "cores"}`,
+  },
+};
+let language = "zh-CN", copy = translations[language];
+let lastSessions, lastSystem, connection = "connecting";
 
 /* ---------- 日间/夜间主题 ---------- */
 const themeBtn = $("themeBtn");
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
-  themeBtn.textContent = t === "light" ? "🌙 夜间" : "☀️ 日间";
-  themeBtn.title = t === "light" ? "切换到夜间模式" : "切换到日间模式";
+  themeBtn.textContent = t === "light" ? copy.night : copy.day;
+  themeBtn.title = t === "light" ? copy.switchNight : copy.switchDay;
 }
 let theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
 applyTheme(theme);
@@ -316,9 +424,10 @@ const fmtCompact = (n) => {
   return String(n);
 };
 const fmtNum = (n) => (n == null ? "--" : Number(n).toLocaleString("en-US"));
-const hhmmss = (t) => new Date(t).toLocaleTimeString("zh-CN", { hour12: false });
+const hhmmss = (t) => new Date(t).toLocaleTimeString(language, { hourCycle: "h23" });
 const hhmm = (t) => hhmmss(t).slice(0, 5);
 const rate1 = (v) => (v == null ? "--" : Number(v).toFixed(1));
+const withUnit = (value, unit) => unit ? value + "<i>" + unit + "</i>" : String(value);
 
 // 值变化时轻弹一下(只动 transform/opacity,数字扫读定位用)
 function bump(el) { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); }
@@ -391,15 +500,16 @@ function updateLanes(sessions, total) {
     const r = laneRate(s);
     const rtxt = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
     if (rtxt !== n.lastRate) { n.rt.textContent = rtxt; if (r != null && n.lastRate !== null && s.status === "generating") bump(n.rt); n.lastRate = rtxt; }
-    const seg = s.turn && s.turn.requests > 1 ? s.turn.requests + " 段 · " : "";
-    n.sub.textContent = s.session ? seg + "累计 " + fmtCompact(s.session.totalOutput + s.session.totalReasoning) : "无数据";
+    const seg = s.turn && s.turn.requests > 1 ? `${s.turn.requests} ${copy.segmentUnit(s.turn.requests)} · ` : "";
+    n.sub.textContent = s.session ? seg + copy.cumulative + " " + fmtCompact(s.session.totalOutput + s.session.totalReasoning) : copy.noData;
     n.tm.textContent = s.lastAt ? hhmm(s.lastAt) : "--:--";
   }
   if (!sessions.length) {
     if (!updateLanes.emptyEl) {
       const el = document.createElement("div");
       el.className = "empty";
-      el.textContent = "暂无会话数据 —— 在 ZCode 里发一条消息试试";
+      el.textContent = copy.noLanes;
+      el.dataset.i18n = "noLanes";
       lanesEl.appendChild(el);
       updateLanes.emptyEl = el;
     }
@@ -416,7 +526,6 @@ function bindLane(n, sid) {
 $("follow").addEventListener("click", () => { focusLock = false; $("follow").hidden = true; });
 
 /* ---------- 聚焦详情 ---------- */
-const stateTxt = { generating: "生成中", active: "活跃", idle: "空闲" };
 let chartHist = [], chartSig = "";
 
 // 画布取色:每次绘制现读 CSS 变量,主题切换即生效(不缓存,避免主题状态滞留)
@@ -444,7 +553,7 @@ function drawChart() {
   const data = chartHist.filter((v) => v != null);
   if (data.length < 2) {
     ctx.fillStyle = pal.empty; ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
-    ctx.fillText(data.length ? "样本不足,等待更多请求完成…" : "暂无速率样本", 12, h / 2);
+    ctx.fillText(data.length ? copy.waitingSamples : copy.noSamples, 12, h / 2);
     return;
   }
   const right = 46, top = 10, bottom = 18;
@@ -482,43 +591,74 @@ function renderDetail(s) {
   $("dDir").textContent = s.cwd || s.sessionId;
   const st = $("dState");
   st.className = "state " + (s.status === "generating" ? "gen" : s.status === "active" ? "act" : "idl");
-  st.textContent = stateTxt[s.status] || s.status;
+  st.textContent = copy[s.status] || s.status;
   const r = laneRate(s);
   const big = $("dRate");
   big.textContent = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
   big.className = "big" + (s.status === "idle" ? " idl" : "");
   if (r != null && s.status === "generating") bump(big);
-  $("dCap").textContent = s.requestRate != null || !s.turn ? "最近一段速率" : "本轮即时速率";
+  $("dCap").textContent = s.requestRate != null || !s.turn ? copy.segmentRate : copy.turnRate;
   if (s.turn) {
     const t = s.turn;
     $("dSub").innerHTML =
-      "首字 <b>" + (t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) : "-") + "s</b> · 输出 <b>" + fmtNum(t.totalOutput) +
-      (t.totalReasoning ? " +" + fmtNum(t.totalReasoning) + " 思考" : "") + "</b> tok · 生成 <b>" +
+      copy.first + " <b>" + (t.ttftMs != null ? (t.ttftMs / 1000).toFixed(1) : "-") + "s</b> · " + copy.output + " <b>" + fmtNum(t.totalOutput) +
+      (t.totalReasoning ? " +" + fmtNum(t.totalReasoning) + " " + copy.reasoning : "") + "</b> tok · " + copy.generation + " <b>" +
       (t.genMs > 0 ? (t.genMs / 1000).toFixed(1) : "-") + "s</b>" +
-      (t.requests > 1 ? " · <b>" + t.requests + "</b> 段 · 峰 <b>" + rate1(t.peak) + "</b>" : "") +
+      (t.requests > 1 ? " · <b>" + t.requests + "</b> " + copy.segmentUnit(t.requests) + " · " + copy.peak + " <b>" + rate1(t.peak) + "</b>" : "") +
       " · ⏱ " + hhmmss(t.lastAt);
   } else if (s.latest) {
     const l = s.latest;
-    $("dSub").innerHTML = "输出 <b>" + fmtNum(l.outputTokens) + "</b> tok · 生成 <b>" +
+    $("dSub").innerHTML = copy.output + " <b>" + fmtNum(l.outputTokens) + "</b> tok · " + copy.generation + " <b>" +
       (l.genMs != null ? (l.genMs / 1000).toFixed(1) : "-") + "s</b> · ⏱ " + hhmmss(l.completedAt);
   } else {
-    $("dSub").textContent = "该会话还没有已完成的模型请求";
+    $("dSub").textContent = copy.noRequests;
   }
   const ses = s.session;
   $("cAvg").textContent = ses && ses.avg != null ? rate1(ses.avg) : "--";
   $("cMax").textContent = ses && ses.max != null ? rate1(ses.max) : "--";
   $("cCum").innerHTML = ses ? fmtCompact(ses.totalOutput + ses.totalReasoning) + "<i>tok</i>" : "--";
-  $("cReq").innerHTML = ses ? fmtNum(ses.requests) + "<i>次</i>" : "--";
+  $("cReq").innerHTML = ses ? withUnit(fmtNum(ses.requests), copy.requestUnit) : "--";
   chartHist = s.history || [];
   const sig = s.sessionId + ":" + chartHist.length + ":" + (chartHist[chartHist.length - 1] ?? "");
-  if (sig !== chartSig) { chartSig = sig; drawChart(); $("chartCap").textContent = "近 " + chartHist.filter((v) => v != null).length + " 段"; }
+  if (sig !== chartSig) { chartSig = sig; drawChart(); $("chartCap").textContent = copy.recentSegments(chartHist.filter((v) => v != null).length); }
+}
+
+function renderConnection() {
+  $("live").classList.toggle("err", connection === "disconnected");
+  $("liveTxt").textContent = copy[connection];
+}
+
+function syncHostLanguage() {
+  const locale = window.zcode?.locale;
+  if (!locale) return;
+  const next = /^zh(?:[-_]|$)/i.test(locale) ? "zh-CN" : "en-US";
+  if (next === language) return;
+  language = next;
+  copy = translations[language];
+  document.documentElement.lang = language;
+  document.title = copy.title;
+  for (const node of document.querySelectorAll("[data-i18n]")) node.textContent = copy[node.dataset.i18n];
+  applyTheme(theme);
+  renderConnection();
+  chartSig = "";
+  if (lastSessions) renderSessions(lastSessions);
+  if (!chartSig) drawChart();
+  if (lastSystem) renderSystem(lastSystem);
+  clock();
 }
 
 /* ---------- 轮询 ---------- */
+let languageHost;
 async function readDashboardData(name) {
-  if (window.zcode?.callTool) {
-    await window.zcode.ready();
-    const result = await window.zcode.callTool(name, {});
+  const host = window.zcode;
+  if (host?.callTool) {
+    if (host !== languageHost) {
+      languageHost = host;
+      host.subscribe?.(syncHostLanguage);
+    }
+    await host.ready();
+    syncHostLanguage();
+    const result = await host.callTool(name, {});
     if (result.isError || !result.structuredContent) throw new Error("Dashboard data unavailable");
     return result.structuredContent;
   }
@@ -527,39 +667,50 @@ async function readDashboardData(name) {
   return res.json();
 }
 
+function renderSessions(r) {
+  const list = r.sessions || [];
+  if (!focusLock) {
+    const current = list.find((session) => session.sessionId === r.focusedSessionId);
+    focusSid = current?.sessionId ?? list[0]?.sessionId ?? null;
+  }
+  updateLanes(list, r.total);
+  const cur = list.find((x) => x.sessionId === focusSid) || list[0];
+  if (cur) renderDetail(cur); else { $("dName").textContent = copy.noSessions; $("dSub").textContent = copy.waitingUsage; }
+  const gen = list.filter((x) => x.status === "generating").length;
+  const act = list.filter((x) => x.status !== "idle").length;
+  $("sTotal").innerHTML = withUnit(r.total ?? list.length, copy.sessionUnit);
+  $("sGen").innerHTML = withUnit(gen, copy.sessionUnit);
+  $("sAct").innerHTML = withUnit(act, copy.sessionUnit);
+  let cum = 0; for (const s of list) if (s.session) cum += s.session.totalOutput + s.session.totalReasoning;
+  $("sCum").innerHTML = fmtCompact(cum) + "<i>tok</i>";
+}
+
 async function tickSessions() {
   try {
     const r = await readDashboardData("sessions");
-    $("live").classList.remove("err"); $("liveTxt").textContent = "实时";
-    const list = r.sessions || [];
-    if (!focusLock) {
-      const current = list.find((session) => session.sessionId === r.focusedSessionId);
-      focusSid = current?.sessionId ?? list[0]?.sessionId ?? null;
-    }
-    updateLanes(list, r.total);
-    const cur = list.find((x) => x.sessionId === focusSid) || list[0];
-    if (cur) renderDetail(cur); else { $("dName").textContent = "暂无会话"; $("dSub").textContent = "等待 usage 数据库返回…"; }
-    const gen = list.filter((x) => x.status === "generating").length;
-    const act = list.filter((x) => x.status !== "idle").length;
-    $("sTotal").innerHTML = (r.total ?? list.length) + "<i>个</i>";
-    $("sGen").innerHTML = gen + "<i>个</i>";
-    $("sAct").innerHTML = act + "<i>个</i>";
-    let cum = 0; for (const s of list) if (s.session) cum += s.session.totalOutput + s.session.totalReasoning;
-    $("sCum").innerHTML = fmtCompact(cum) + "<i>tok</i>";
+    renderSessions(r);
+    lastSessions = r;
+    connection = "live";
   } catch {
-    $("live").classList.add("err"); $("liveTxt").textContent = "连接断开";
+    connection = "disconnected";
   }
+  renderConnection();
+}
+
+function renderSystem(system) {
+  $("cpu").textContent = system.cpuPercent.toFixed(1) + "%";
+  setBar($("cpuBar"), system.cpuPercent);
+  $("mem").textContent = (system.memUsedMB / 1024).toFixed(1) + " / " + (system.memTotalMB / 1024).toFixed(0) + " GB";
+  setBar($("memBar"), system.memPercent);
+  $("up").textContent = copy.hours(system.hostUptimeHours);
+  $("plat").textContent = system.platform + " · " + copy.cores(system.cpuCores);
 }
 
 async function tickSys() {
   try {
-    const m = await readDashboardData("metrics");
-    $("cpu").textContent = m.system.cpuPercent.toFixed(1) + "%";
-    setBar($("cpuBar"), m.system.cpuPercent);
-    $("mem").textContent = (m.system.memUsedMB / 1024).toFixed(1) + " / " + (m.system.memTotalMB / 1024).toFixed(0) + " GB";
-    setBar($("memBar"), m.system.memPercent);
-    $("up").textContent = m.system.hostUptimeHours + " 小时";
-    $("plat").textContent = m.system.platform + " · " + m.system.cpuCores + " 核";
+    const { system } = await readDashboardData("metrics");
+    renderSystem(system);
+    lastSystem = system;
   } catch {}
 }
 function setBar(el, pct) {

@@ -6,11 +6,17 @@
 
 ## 效果预览
 
-| 中文 | English |
+| 中文悬停卡片 | English tooltip |
 | --- | --- |
 | <img src="assets/tps-hover-zh.png" width="320" alt="ZCode 中文悬停卡片与波形底栏"> | <img src="assets/tps-hover-en.png" width="320" alt="English TPS tooltip and composer status in ZCode"> |
 
-卡片跟随 ZCode 的界面语言。ZCode 设为「跟随系统」时，卡片采用系统语言。
+| 中文监控面板 | English dashboard |
+| --- | --- |
+| [![ZCode 中文监控面板](assets/tps-dashboard-zh.png)](assets/tps-dashboard-zh.png) | [![English TPS dashboard in ZCode](assets/tps-dashboard-en.png)](assets/tps-dashboard-en.png) |
+
+监控面板实拍使用演示数据。点击图片可放大。
+
+悬停卡片和内置监控面板支持中英文，跟随 ZCode 的界面语言。ZCode 设为「系统默认」时，两处都采用系统语言。
 
 ## 安装与更新
 
