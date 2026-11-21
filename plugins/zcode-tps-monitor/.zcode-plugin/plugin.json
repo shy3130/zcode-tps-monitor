@@ -1,10 +1,10 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.10.5",
-  "description": "Token output-rate monitor for ZCode: shows real instant tokens/sec (from the ZCode usage DB) for the current question at the end of each tool-using reply — never the previous turn — plus a /tps command with an all-sessions overview (--sessions), MCP tools, and a multi-session real-time dashboard (one lane per session, no overlay window needed); also supports service-TPS monitoring via a configurable metrics URL or demo data.",
+  "version": "0.11.7",
+  "description": "Shows tokens per second for the current conversation in the ZCode Desktop composer. Requires ZCode 3.18.2 or later. Includes /tps, a multi-session dashboard, and MCP tools.",
   "description_i18n": {
-    "en": "Token rate monitor: per-question instant tokens/sec from the ZCode usage DB, shown at the end of each tool-using reply; /tps command with all-sessions overview, MCP tools, and a multi-session real-time dashboard (one lane per session). Supports a real metrics URL or built-in demo data for service TPS.",
-    "zh-CN": "ZCode Token 输出速率监控：每条调用了工具的回答末尾自动附本问的即时 tok/s（读取 ZCode 数据库，绝不显示上一轮），另有 /tps 命令（含全部会话总览 --sessions）、MCP 工具与多会话实时大屏（每个会话一条泳道，无需悬浮窗）；同时支持业务 TPS 监控（可配置指标接口或演示数据）。"
+    "en": "Shows tokens per second for the current conversation in the ZCode Desktop composer. Requires ZCode 3.18.2 or later. Includes /tps, a multi-session dashboard, and MCP tools.",
+    "zh-CN": "在 ZCode 桌面端输入框底部显示当前会话的 tok/s。要求 ZCode 3.18.2 或更高版本，另提供 /tps、多会话大屏和 MCP 工具。"
   },
   "author": {
     "name": "Administrator"
@@ -19,6 +19,29 @@
   ],
   "commands": "commands",
   "skills": "skills",
+  "extension": {
+    "engines": { "zcode": "^1.4.0" },
+    "main": "./extension.mjs",
+    "activationEvents": ["onAvailable"],
+    "contributes": {
+      "commands": [
+        {
+          "id": "open-dashboard",
+          "title": { "zh-CN": "打开 TPS 监控面板", "en-US": "Open TPS dashboard" }
+        }
+      ],
+      "views": [
+        {
+          "id": "dashboard",
+          "title": { "zh-CN": "TPS 监控", "en-US": "TPS Monitor" },
+          "icon": "activity"
+        }
+      ]
+    }
+  },
+  "slots": {
+    "composer.status": [{ "id": "tps", "icon": "activity", "target": { "command": "open-dashboard" } }]
+  },
   "userConfig": {
     "metrics_url": {
       "title": "Metrics URL",

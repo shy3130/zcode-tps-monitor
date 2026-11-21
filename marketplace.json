@@ -8,12 +8,12 @@
     {
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
-      "description": "Token 速率监控:每条调用了工具的回答末尾自动附本问即时速率(绝不显示上一轮) + 多会话实时大屏(每会话一条泳道) + /tps 命令(含 --sessions 全会话总览) + MCP 工具;支持配置真实指标接口或使用演示数据。",
-      "version": "0.10.5",
+      "description": "在 ZCode 桌面端输入框底部显示当前会话的 tok/s。要求 ZCode 3.18.2 或更高版本，另提供 /tps、多会话大屏和 MCP 工具。",
+      "version": "0.11.7",
       "author": {
         "name": "Administrator"
       },
-      "icon": "https://gcore.jsdelivr.net/gh/shy3130/zcode-tps-monitor@29f1a35/assets/icon.png",
+      "icon": "https://raw.githubusercontent.com/shy3130/zcode-tps-monitor/main/assets/icon.png",
       "category": "monitoring",
       "keywords": [
         "tps",

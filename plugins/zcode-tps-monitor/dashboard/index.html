@@ -329,6 +329,7 @@ const laneNodes = new Map(); // sid -> {root, dot容器由 class 表达, nm, mdl
 let focusSid = null, focusLock = false;
 
 function laneRate(s) {
+  if (s.requestRate != null) return s.requestRate;
   if (s.turn && s.turn.tokPerSec != null) return s.turn.tokPerSec;
   if (s.latest && s.latest.tokPerSec != null) return s.latest.tokPerSec;
   return null;
@@ -388,7 +389,7 @@ function updateLanes(sessions, total) {
     n.dir.textContent = s.cwd || s.sessionId;
     sparkPath(n.ln, n.area, s.history || []);
     const r = laneRate(s);
-    const rtxt = r == null ? "--" : rate1(r);
+    const rtxt = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
     if (rtxt !== n.lastRate) { n.rt.textContent = rtxt; if (r != null && n.lastRate !== null && s.status === "generating") bump(n.rt); n.lastRate = rtxt; }
     const seg = s.turn && s.turn.requests > 1 ? s.turn.requests + " 段 · " : "";
     n.sub.textContent = s.session ? seg + "累计 " + fmtCompact(s.session.totalOutput + s.session.totalReasoning) : "无数据";
@@ -484,10 +485,10 @@ function renderDetail(s) {
   st.textContent = stateTxt[s.status] || s.status;
   const r = laneRate(s);
   const big = $("dRate");
-  big.textContent = r == null ? "--" : rate1(r);
+  big.textContent = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
   big.className = "big" + (s.status === "idle" ? " idl" : "");
   if (r != null && s.status === "generating") bump(big);
-  $("dCap").textContent = s.turn ? "本轮即时速率" : "最近一段速率";
+  $("dCap").textContent = s.requestRate != null || !s.turn ? "最近一段速率" : "本轮即时速率";
   if (s.turn) {
     const t = s.turn;
     $("dSub").innerHTML =
@@ -514,15 +515,28 @@ function renderDetail(s) {
 }
 
 /* ---------- 轮询 ---------- */
+async function readDashboardData(name) {
+  if (window.zcode?.callTool) {
+    await window.zcode.ready();
+    const result = await window.zcode.callTool(name, {});
+    if (result.isError || !result.structuredContent) throw new Error("Dashboard data unavailable");
+    return result.structuredContent;
+  }
+  const res = await fetch("/api/" + name, { cache: "no-store" });
+  if (!res.ok) throw new Error("Dashboard data unavailable");
+  return res.json();
+}
+
 async function tickSessions() {
   try {
-    const res = await fetch("/api/sessions", { cache: "no-store" });
-    if (!res.ok) return;
-    const r = await res.json();
+    const r = await readDashboardData("sessions");
     $("live").classList.remove("err"); $("liveTxt").textContent = "实时";
     const list = r.sessions || [];
+    if (!focusLock) {
+      const current = list.find((session) => session.sessionId === r.focusedSessionId);
+      focusSid = current?.sessionId ?? list[0]?.sessionId ?? null;
+    }
     updateLanes(list, r.total);
-    if (!focusLock) focusSid = list.length ? list[0].sessionId : null;
     const cur = list.find((x) => x.sessionId === focusSid) || list[0];
     if (cur) renderDetail(cur); else { $("dName").textContent = "暂无会话"; $("dSub").textContent = "等待 usage 数据库返回…"; }
     const gen = list.filter((x) => x.status === "generating").length;
@@ -539,9 +553,7 @@ async function tickSessions() {
 
 async function tickSys() {
   try {
-    const res = await fetch("/api/metrics", { cache: "no-store" });
-    if (!res.ok) return;
-    const m = await res.json();
+    const m = await readDashboardData("metrics");
     $("cpu").textContent = m.system.cpuPercent.toFixed(1) + "%";
     setBar($("cpuBar"), m.system.cpuPercent);
     $("mem").textContent = (m.system.memUsedMB / 1024).toFixed(1) + " / " + (m.system.memTotalMB / 1024).toFixed(0) + " GB";

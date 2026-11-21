@@ -4,13 +4,7 @@
 
 ## 效果预览
 
-**① 回复结尾统计 · 手机/网页/CLI**(引用块单行,自动;速率加粗、中点分隔):
-
-![统计行渲染效果](docs/effect-line-v2.png)
-
-**① 回复结尾统计 · 桌面端**(Gen UI 卡片,自动;一条命令静默落盘):
-
-![回复结尾统计卡片](docs/effect-turn-card-2x.png)
+**① 输入框底栏**要求 ZCode 桌面端 3.18.2 或更高版本。插件自动在上下文用量圆环左边显示当前会话的速率。带 `≈` 的值为流式估算，已完成的请求速率会按会话保存。
 
 **② 多会话实时大屏**(每会话一条泳道,点击聚焦详情):
 
@@ -24,32 +18,26 @@
 
 ## 配置
 
-全部配置写 `~/.zcode/tps-monitor.config.json`(改完下一轮即生效,无需重装):
+手动查询的格式可在 `~/.zcode/tps-monitor.config.json` 设置。
 
 ```json
 {
-  "tokenRateLine": true,
-  "statsStyle": "card",
   "statsFormat": {
     "wrap": "quote",
     "sep": "dot",
     "clock": true,
     "spark": true,
     "sparkMax": 4
-  },
-  "stopHookLine": false
+  }
 }
 ```
 
 | 键 | 取值 | 说明 |
 |---|---|---|
-| `tokenRateLine` | `true` / `false` | 总开关:`false` 关闭全部速率注入(含收尾统计) |
-| `statsStyle` | `card` / `line` | 收尾统计形态:桌面端 Gen UI 卡片 / Markdown 单行;不配置时按提交端 `client_mode` 自动(桌面→卡片,手机/网页/CLI→单行) |
 | `statsFormat.wrap` | `quote` / `code` / `plain` / `italic` | 单行包裹:引用块(默认,速率加粗)/ 行内代码胶囊(等宽+底色,不加粗)/ 裸行 / 斜体 |
 | `statsFormat.sep` | `dot` / `bar` | 单行分隔符:`·`(默认)/ `│` |
 | `statsFormat.clock` | `true` / `false` | 行尾 ⏱ 时刻 |
 | `statsFormat.spark` | `true` / `false` | 桌面卡片走势条(默认开);`sparkMax` 限段数(1–8,默认 4) |
-| `stopHookLine` | `true` / `false` | 实验性:Stop 钩子直显本轮统计(每轮一次);因触发时机不定,默认关 |
 
 单行各字段含义与数字规则(净/总、紧凑单位等)见[仓库 README 的字段表](../../README.md#效果预览)。
 
@@ -57,9 +45,9 @@
 
 | 形态 | 入口 | 说明 |
 |---|---|---|
-| 本问统计 | `hooks/prompt-submit.mjs` + `scripts/token-rate.mjs` | 每轮注入「本问统计指令」:模型在回复收尾时运行 `token-rate.mjs --turn --current`,把本问即时速率行附在回复末尾;`--current` 守卫保证绝不显示上一轮。`{"tokenRateLine": false}` 可整体关闭 |
-| 上下文注入 | `hooks/prompt-submit.mjs` | 每轮读取 ZCode usage 数据库,注入上一轮速率作为模型内部参考(标注勿展示);随 tokenRateLine 一并关闭 |
-| 会话提示 | `hooks/session-start.mjs` | 会话启动时记录会话 ID,并注入使用提示(收尾自测机制说明) |
+| 原生底栏 | `extension.mjs` | 订阅生成速率，按会话更新 ZCode 的 `composer.status`，并保存完成请求的速率 |
+| 手动统计 | `scripts/token-rate.mjs` | 查询已写入数据库的本轮和会话用量 |
+| 会话状态 | `hooks/session-start.mjs`、`hooks/prompt-submit.mjs` | 记录会话与提问时间，供手动查询和大屏使用 |
 | 自检 | `/tps-doctor`(`scripts/doctor.mjs`) | 检查 Node 版本、数据库与表结构、状态/配置文件、大屏进程;`--json` 可编程消费 |
 | 实时大屏 | `dashboard/server.mjs` | **多会话**浏览器监控面板(0.10.0):左栏每个会话一条泳道(生成中/活跃/空闲三态、迷你走势、即时速率、终身累计),右侧点击聚焦的会话详情与全量速率曲线,每秒刷新;`/zcode-tps-monitor:dashboard` 拉起,或手动运行 |
 | 全会话总览 | `token-rate.mjs --sessions` | 一行一会话的命令行总览(速率/累计/状态),与 `/tps` 命令集成 |
@@ -68,8 +56,8 @@
 | 斜杠命令 | `/zcode-tps-monitor:tps` | 即时快照;`/zcode-tps-monitor:tps 10` 采样观察 10 秒 |
 | 技能 | `zcode-tps-monitor` | 用户询问速率/TPS 相关问题时自动触发 |
 | MCP 工具 | `tps_snapshot` / `tps_watch` | stdio MCP server(`mcp/tps-server.mjs`),供 agent 程序化取数 |
-| Stop 钩子(实验) | `hooks/stop.mjs` | 客户端现已触发 Stop 事件,但时机不定(观察到轮次进行中触发);默认只维护**本会话的**分状态文件且不覆盖提问时间戳、不写全局文件;`{"stopHookLine": true}` 可开启直显(每轮一次) |
-| 统计样式配置 | `~/.zcode/tps-monitor.config.json` | `statsStyle`:`card`(桌面端 Gen UI 卡片)/`line`(单行),默认按提交端 `client_mode` 自动;`statsFormat` 段微调:`wrap`(quote 默认/code/plain/italic)、`sep`(dot 默认/bar)、`clock`;`spark`/`sparkMax` 为桌面卡片走势条开关 |
+| Stop 钩子 | `hooks/stop.mjs` | 更新本会话的状态文件，保留提问时间戳 |
+| 统计格式配置 | `~/.zcode/tps-monitor.config.json` | `statsFormat` 用于手动查询的文本和卡片样式 |
 
 ## 数据源
 
@@ -138,15 +126,16 @@ printf '%s\n' \
 zcode-tps-monitor/
 ├── .zcode-plugin/plugin.json   # 插件清单(name / userConfig)
 ├── .claude-plugin/plugin.json  # 兼容清单
+├── extension.mjs              # ZCode 输入框底栏
 ├── .mcp.json                   # MCP server 注册(${ZCODE_PLUGIN_ROOT})
 ├── commands/tps.md             # /zcode-tps-monitor:tps
 ├── commands/dashboard.md       # /zcode-tps-monitor:dashboard
 ├── commands/tps-doctor.md      # /zcode-tps-monitor:tps-doctor
 ├── skills/zcode-tps-monitor/SKILL.md  # 自动触发技能
 ├── hooks/hooks.json            # 钩子注册(SessionStart + UserPromptSubmit + Stop)
-├── hooks/session-start.mjs     # 会话启动:记录会话 ID(分文件+全局)+ 使用提示
-├── hooks/prompt-submit.mjs     # 每轮:记录提问时刻(分文件+全局)+ 注入上一轮参考 + 本问统计指令
-├── hooks/stop.mjs              # 客户端现已触发;只维护本会话分状态文件(保留 promptTs,不写全局),直显默认关
+├── hooks/session-start.mjs     # 会话启动:记录会话 ID(分文件+全局)
+├── hooks/prompt-submit.mjs     # 每轮:记录提问时刻(分文件+全局)
+├── hooks/stop.mjs              # 只维护本会话分状态文件并保留 promptTs
 ├── mcp/tps-server.mjs          # stdio MCP server
 ├── dashboard/
 │   ├── server.mjs              # HTTP 服务(页面 + /api/metrics + /api/sessions 多会话泳道)

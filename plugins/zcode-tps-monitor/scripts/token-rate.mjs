@@ -16,8 +16,10 @@
 
 // 抑制 node:sqlite 的 ExperimentalWarning 噪音:必须在动态 import 之前接管 warning 通道
 // (静态 import 的内置模块在模块体执行前就已求值,届时再监听就晚了)。
-process.removeAllListeners("warning");
-process.on("warning", () => {});
+if (!process.versions.electron) {
+  process.removeAllListeners("warning");
+  process.on("warning", () => {});
+}
 
 const { DatabaseSync } = await import("node:sqlite");
 import os from "node:os";
@@ -60,7 +62,8 @@ const DB_PATH =
   path.join(os.homedir(), ".zcode", "cli", "db", "db.sqlite");
 const N = Number(process.env.TOKEN_RATE_WINDOW) || 5;           // 统计窗口(均/峰)
 const HIST = Number(process.env.TOKEN_RATE_HIST) || 60;         // 曲线历史点数
-const MIN_GEN_MS = Number(process.env.TOKEN_RATE_MIN_MS) || 200;      // 有效样本:最短生成耗时
+const COMPOSER_MIN_GEN_MS = 200;
+const MIN_GEN_MS = Number(process.env.TOKEN_RATE_MIN_MS) || COMPOSER_MIN_GEN_MS; // 有效样本:最短生成耗时
 const MAX_GEN_MS = Number(process.env.TOKEN_RATE_MAX_MS) || 3_600_000; // 有效样本:最长生成耗时(1h)
 
 // 钩子状态文件(全局 + 分会话)的读写与提问时刻解析统一在 lib/session.mjs,
@@ -115,7 +118,7 @@ function scopeFor(db, sid) {
   return { scopeSql, args };
 }
 
-function toItem(r) {
+function toItem(r, minGenMs = MIN_GEN_MS) {
   const tok = r.output_tokens ?? 0;
   const reasoning = r.reasoning_tokens ?? 0;
   // 部分行(如非流式/中断请求)缺 first_token_at,须判无效
@@ -123,7 +126,7 @@ function toItem(r) {
   const genMs = hasTime ? r.completed_at - r.first_token_at : null; // 纯生成耗时(不含首 token 等待)
   // 速率分子含思考 token:思考内容同样是流式输出,ZCode 未单独记录时该列为 0,行为不变
   const rateTokens = tok + reasoning;
-  const valid = genMs != null && genMs >= MIN_GEN_MS && genMs < MAX_GEN_MS && rateTokens > 0;
+  const valid = genMs != null && genMs >= minGenMs && genMs < MAX_GEN_MS && rateTokens > 0;
   return {
     model: r.model_id,
     outputTokens: tok,
@@ -166,7 +169,7 @@ function query(sessionId) {
     const { scopeSql, args } = scopeFor(db, sid);
     // 曲线历史(大窗口)与统计(小窗口)分别查询,刷新/重开不丢
     const histRows = db.prepare(scopeSql + " ORDER BY completed_at DESC LIMIT ?").all(...args, HIST);
-    const items = histRows.slice(0, N).map(toItem);
+    const items = histRows.slice(0, N).map((row) => toItem(row));
     const rated = items.filter((i) => i.tokPerSec != null);
     // 展示用 latest 优先取最近一条"有效"记录,避免在途/缺字段行顶掉头条
     const latest = rated[0] ?? items[0] ?? null;
@@ -196,36 +199,53 @@ function latestTurnId(db, sid) {
 // 优先本会话的分状态文件(会话由全局显式记录或 cwd 匹配解析),拿不到再回退全局文件;
 // 其他会话对全局文件的覆写不再影响守卫判定。
 
+function countSessionTurns(db, sid) {
+  try {
+    return db.prepare(
+      "SELECT COUNT(*) n FROM message WHERE session_id = ? AND json_valid(data)" +
+      " AND json_extract(data, '$.role') = 'user'" +
+      " AND COALESCE(json_extract(data, '$.synthetic'), 0) = 0"
+    ).get(sid).n;
+  } catch {
+    return null;
+  }
+}
+
 function queryTurn(sessionId, opts = {}) {
   const db = openDb();
   try {
     const sid = sessionId || fallbackSessionId(db);
     if (!sid) return { sessionId: null, turnId: null, turn: null, session: null };
+    const composer = opts.composer ? { sessionTurns: countSessionTurns(db, sid) } : {};
     const { scopeSql, args } = scopeFor(db, sid);
-    const winRows = db.prepare(scopeSql + " ORDER BY completed_at DESC LIMIT ?").all(...args, N);
-    const session = sessionAggregate(db, scopeSql, args, winRows.map(toItem).filter((i) => i.tokPerSec != null));
+    let session = null;
+    if (!opts.composer) {
+      const winRows = db.prepare(scopeSql + " ORDER BY completed_at DESC LIMIT ?").all(...args, N);
+      session = sessionAggregate(db, scopeSql, args, winRows.map((row) => toItem(row)).filter((i) => i.tokPerSec != null));
+    }
     const turnId = latestTurnId(db, sid);
-    if (!turnId) return { sessionId: sid, turnId: null, turn: null, session };
+    if (!turnId) return { sessionId: sid, turnId: null, turn: null, session, ...composer };
     let turnRows;
     try {
       turnRows = db.prepare(scopeSql + " AND turn_id = ? ORDER BY completed_at ASC").all(...args, turnId);
     } catch {
-      return { sessionId: sid, turnId: null, turn: null, session };
+      return { sessionId: sid, turnId: null, turn: null, session, ...composer };
     }
-    if (!turnRows.length) return { sessionId: sid, turnId, turn: null, session };
+    if (!turnRows.length) return { sessionId: sid, turnId, turn: null, session, ...composer };
     // --current 守卫:最新 turn 的行全部早于本次提问时刻 → 本问还没有任何模型请求
     // (典型场景:纯问答轮在回答结束前),绝不把上一轮数据冒充"本问"返回。
     if (opts.current) {
       const ts = lastPromptTs(sid);
       const lastAt = Math.max(...turnRows.map((r) => r.completed_at ?? 0));
       if (ts && lastAt < ts) {
-        return { sessionId: sid, turnId, turn: null, noCurrentTurnData: true, session };
+        return { sessionId: sid, turnId, turn: null, noCurrentTurnData: true, session, ...composer };
       }
     }
-    const items = turnRows.map(toItem);
+    const minGenMs = opts.composer ? COMPOSER_MIN_GEN_MS : MIN_GEN_MS;
+    const items = turnRows.map((row) => toItem(row, minGenMs));
     const rated = items.filter((i) => i.tokPerSec != null);
-    const totalTok = rated.reduce((s, i) => s + i.outputTokens + i.reasoningTokens, 0);
-    const genMs = rated.reduce((s, i) => s + i.genMs, 0);
+    const ratedTokens = rated.reduce((s, i) => s + i.outputTokens + i.reasoningTokens, 0);
+    const ratedGenMs = rated.reduce((s, i) => s + i.genMs, 0);
     // 总用时(墙钟):提问时刻 → 最后一段完成;提问时刻不可用/不合理时退回首段请求
     // 开始(首 token 时刻 - TTFT)。与净生成时长(genMs,各段纯输出时间之和)互补,
     // 两者之差 ≈ 首字等待 + 段间工具执行等待。
@@ -250,16 +270,17 @@ function queryTurn(sessionId, opts = {}) {
       ttftMs: items[0].ttftMs, // 本轮第一段的首字延迟
       firstAt: items[0].completedAt,
       lastAt: items[items.length - 1].completedAt,
-      genMs,
+      // 底栏净生成包含所有可计时的请求；速率分子和分母只使用同一组有效样本。
+      genMs: opts.composer ? items.reduce((s, i) => s + (i.genMs ?? 0), 0) : ratedGenMs,
       totalMs: startTs != null ? lastAtMs - startTs : null,
       totalOutput: items.reduce((s, i) => s + i.outputTokens, 0),
       totalReasoning: items.reduce((s, i) => s + i.reasoningTokens, 0),
       // 本轮即时速率:总产出 / 总纯生成时长(按段加权,排除段间工具等待),单段时即该段速率
-      tokPerSec: genMs >= MIN_GEN_MS && totalTok > 0 ? Math.round((totalTok / genMs) * 10000) / 10 : null,
+      tokPerSec: rated.length ? Math.round((ratedTokens / ratedGenMs) * 10000) / 10 : null,
       peak: rated.length ? Math.max(...rated.map((i) => i.tokPerSec)) : null,
       spark: STATS_CFG.spark ? sparkBars(sparkRates) : "",
     };
-    return { sessionId: sid, turnId, turn, session };
+    return { sessionId: sid, turnId, turn, session, ...composer };
   } finally {
     db.close();
   }

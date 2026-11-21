@@ -158,7 +158,8 @@ test("prompt-submit 钩子:写入本会话分文件与全局文件,输出严格 
   assert.equal(res.status, 0, res.stderr);
   const out = JSON.parse(res.stdout); // stdout 必须是可解析的严格 JSON
   assert.equal(out.hookSpecificOutput.hookEventName, "UserPromptSubmit");
-  assert.ok(typeof out.hookSpecificOutput.additionalContext === "string");
+  assert.match(out.hookSpecificOutput.additionalContext, /取消之前的自动收尾统计指令/);
+  assert.doesNotMatch(out.hookSpecificOutput.additionalContext, /token-rate\.mjs/);
   const st = JSON.parse(fs.readFileSync(path.join(sessionsDir, "sA.json"), "utf8"));
   assert.equal(st.sessionId, "sA");
   assert.equal(st.source, "prompt-submit");
@@ -173,6 +174,7 @@ test("session-start 钩子:同样写分文件+全局,输出严格 JSON", () => {
   assert.equal(res.status, 0, res.stderr);
   const out = JSON.parse(res.stdout);
   assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
+  assert.equal(out.hookSpecificOutput.additionalContext, "");
   const st = JSON.parse(fs.readFileSync(path.join(sessionsDir, "sB.json"), "utf8"));
   assert.equal(st.sessionId, "sB");
   assert.equal(st.source, "session-start");
@@ -193,7 +195,7 @@ test("Stop 钩子:只更新本会话分文件,绝不覆写全局状态文件", (
   });
   const res = runHook("stop.mjs", { session_id: "sA", cwd: DIR_A });
   assert.equal(res.status, 0, res.stderr);
-  assert.equal(res.stdout.trim(), ""); // 未开 stopHookLine → 不直显,输出为空(客户端契约)
+  assert.equal(res.stdout.trim(), "");
   assert.equal(fs.readFileSync(globalStateFile, "utf8"), before); // 全局文件逐字节不变,B 不被覆写
   const st = JSON.parse(fs.readFileSync(path.join(sessionsDir, "sA.json"), "utf8"));
   assert.equal(st.sessionId, "sA");

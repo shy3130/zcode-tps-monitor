@@ -114,20 +114,15 @@ function stateFileCheck() {
 
 function configCheck() {
   try {
-    const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-    const off = cfg.tokenRateLine === false;
-    const direct = cfg.stopHookLine === true;
+    JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
     return {
       name: "配置文件",
       ok: true,
-      detail:
-        off
-          ? "tokenRateLine=false,速率行注入已关闭(属预期)"
-          : "已读取,注入开启" + (direct ? ";stopHookLine=true,Stop 直显实验开启" : ""),
-      hint: off ? "如需恢复注入,删除该文件或改回 true" : null,
+      detail: "已读取手动查询的格式配置",
+      hint: null,
     };
   } catch {
-    return { name: "配置文件", ok: true, detail: "未配置(默认注入开启)", hint: null };
+    return { name: "配置文件", ok: true, detail: "采用默认统计格式", hint: null };
   }
 }
 
