@@ -2,6 +2,8 @@
 
 # ZCode TPS Monitor
 
+**[简体中文](README.md)** · [English](README.en.md)
+
 [![CI](https://github.com/shy3130/zcode-tps-monitor/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/shy3130/zcode-tps-monitor/actions/workflows/ci.yml)
 [![GitHub Release](https://img.shields.io/github/v/release/shy3130/zcode-tps-monitor)](https://github.com/shy3130/zcode-tps-monitor/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
