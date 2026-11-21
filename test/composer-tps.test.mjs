@@ -88,7 +88,7 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   assert.equal(current.display.get("app"), "— tok/s");
   assert.equal(current.display.get("sess-a"), "— tok/s");
   assert.match(current.tooltips.get("sess-a"), /会话 1 轮 · 最近一轮 2 段/);
-  assert.match(current.tooltips.get("sess-a"), /首字 0.8 秒 · 输出 98 tok/);
+  assert.match(current.tooltips.get("sess-a"), /最近一轮 2 段\n\n输出 98 tok/);
   assert.match(current.tooltips.get("sess-a"), /峰值 \/ 均速 · 样本过短/);
   assert.match(current.tooltips.get("sess-a"), /净生成 58 毫秒/);
   assert.equal(current.views.get("dashboard").entry, "./dashboard/index.html");
@@ -98,15 +98,16 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   addMessage.run("sess-a", JSON.stringify({ role: "user" }));
   await current.generate("sess-a", "streaming", 42.1);
   assert.equal(current.display.get("sess-a"), "≈42.1 tok/s");
+  assert.match(current.tooltips.get("sess-a"), /^≈42\.1 tok\/s · 流式估算/);
   assert.match(current.tooltips.get("sess-a"), /会话 2 轮 · 本轮等待请求完成/);
   assert.doesNotMatch(current.tooltips.get("sess-a"), /输出 98 tok/);
-  addRequest.run("sess-a", 500, now - 1600, now - 1401, 200, "turn-2"); // 199 ms：仅计总量和耗时
+  addRequest.run("sess-a", 1500, now - 1600, now - 1401, 200, "turn-2"); // 199 ms：仅计总量和耗时
   addRequest.run("sess-a", 80, now - 1300, now - 1100, 60, "turn-2"); // 200 ms：有效，400 tok/s
   addRequest.run("sess-a", 120, now - 1000, now - 600, 100, "turn-2"); // 400 ms：有效，300 tok/s
   await current.generate("sess-a", "final", 39.8);
-  assert.match(current.tooltips.get("sess-a"), /本轮 3 段\n首字 0.2 秒 · 输出 700 tok/);
-  assert.match(current.tooltips.get("sess-a"), /峰值 400 tok\/s · 均速 333.3 tok\/s/);
-  assert.match(current.tooltips.get("sess-a"), /净生成 799 毫秒/);
+  assert.match(current.tooltips.get("sess-a"), /本轮 3 段\n\n输出 1.7k tok/);
+  assert.match(current.tooltips.get("sess-a"), /峰值 400.0 · 均速 333.3 tok\/s/);
+  assert.match(current.tooltips.get("sess-a"), /首字 0.2 秒 · 净生成 799 毫秒/);
   addRequest.run("sess-a", 20, now - 550, now - 349, 100, "turn-2");
   await current.generate("sess-a", "final", 39.8);
   assert.match(current.tooltips.get("sess-a"), /净生成 1.0 秒/);
@@ -119,4 +120,18 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   assert.equal(restarted.display.get("sess-b"), "112.6 tok/s");
   await restarted.switchTo("sess-a");
   assert.equal(restarted.display.get("sess-a"), "39.8 tok/s");
+
+  for (const [rate, text] of [[999.9, "999.9"], [1000, "1k"], [999950, "1M"], [1e9, "1B"]]) {
+    await current.generate("sess-large", "streaming", rate);
+    assert.equal(current.display.get("sess-large"), `≈${text} tok/s`);
+  }
+  addMessage.run("sess-large", JSON.stringify({ role: "user" }));
+  addRequest.run("sess-large", 2_500_000_000, now - 1500, now - 500, 200, "turn-large");
+  db.prepare("UPDATE model_usage SET reasoning_tokens = ? WHERE session_id = ?").run(1_200_000, "sess-large");
+  await current.generate("sess-large", "final", 2_500_000_000);
+  const tooltip = current.tooltips.get("sess-large");
+  assert.match(tooltip, /^2\.5B tok\/s · 最近一段\n/);
+  assert.match(tooltip, /输出 2\.5B tok · 思考 1\.2M tok\n峰值 2\.5B · 均速 2\.5B tok\/s/);
+  assert.match(tooltip, /\n\n点击打开监控面板$/);
+  assert.ok(tooltip.length <= 200);
 });

@@ -1,6 +1,6 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.11.7",
+  "version": "0.11.8",
   "description": "Shows tokens per second for the current conversation in the ZCode Desktop composer. Requires ZCode 3.18.2 or later. Includes /tps, a multi-session dashboard, and MCP tools.",
   "description_i18n": {
     "en": "Shows tokens per second for the current conversation in the ZCode Desktop composer. Requires ZCode 3.18.2 or later. Includes /tps, a multi-session dashboard, and MCP tools.",

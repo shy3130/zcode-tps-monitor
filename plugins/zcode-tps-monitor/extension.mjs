@@ -3,30 +3,37 @@ import { join } from "node:path";
 import { snapshot } from "./scripts/lib/collect-core.mjs";
 
 const numbers = new Intl.NumberFormat("en-US");
+const compactNumbers = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+const compact = (value) => compactNumbers.format(value).replace(/K$/, "k");
+const rateValue = (value) => value < 1000 ? value.toFixed(1) : compact(value);
 const seconds = (ms) => ms == null ? "—" : `${(ms / 1000).toFixed(1)} 秒`;
-const rateText = (rate) => rate == null ? "—" : `${numbers.format(rate)} tok/s`;
 const netTime = (ms) => ms > 0 && ms < 1000 ? `${ms} 毫秒` : seconds(ms || null);
 
-function rateTooltip(text, summary, estimating) {
-  const lines = [estimating ? `${text} · 流式估算` : text];
+function rateTooltip(text, summary, rateLabel) {
+  const lines = [rateLabel ? `${text} · ${rateLabel}` : text];
   if (summary) {
     const { sessionTurns, turn, current } = summary;
     const count = sessionTurns == null ? "—" : numbers.format(sessionTurns);
     if (turn) {
       const label = current ? "本轮" : "最近一轮";
-      lines.push(`会话 ${count} 轮 · ${label} ${turn.requests} 段`);
-      const reasoning = turn.totalReasoning > 0 ? ` · 思考 ${numbers.format(turn.totalReasoning)} tok` : "";
-      lines.push(`首字 ${seconds(turn.ttftMs)} · 输出 ${numbers.format(turn.totalOutput)} tok${reasoning}`);
-      lines.push(turn.rated > 0
-        ? `峰值 ${rateText(turn.peak)} · 均速 ${rateText(turn.tokPerSec)}`
-        : "峰值 / 均速 · 样本过短");
-      lines.push(`净生成 ${netTime(turn.genMs)} · 总用时 ${seconds(turn.totalMs)}`);
+      const reasoning = turn.totalReasoning > 0 ? ` · 思考 ${compact(turn.totalReasoning)} tok` : "";
+      lines.push(
+        `会话 ${count} 轮 · ${label} ${turn.requests} 段`,
+        "",
+        `输出 ${compact(turn.totalOutput)} tok${reasoning}`,
+        turn.rated > 0
+          ? `峰值 ${rateValue(turn.peak)} · 均速 ${rateValue(turn.tokPerSec)} tok/s`
+          : "峰值 / 均速 · 样本过短",
+        `首字 ${seconds(turn.ttftMs)} · 净生成 ${netTime(turn.genMs)}`,
+        `总用时 ${seconds(turn.totalMs)}`,
+      );
     } else {
       lines.push(`会话 ${count} 轮 · ${current ? "本轮等待请求完成" : "暂无请求统计"}`);
     }
   }
-  lines.push("点击打开监控面板");
-  return lines.join("\n").slice(0, 200);
+  // Reserve the action line within the ZCode slot's tooltip limit.
+  const action = "\n\n点击打开监控面板";
+  return lines.join("\n").slice(0, 200 - action.length).trimEnd() + action;
 }
 
 function supportsDesktopVersion(version) {
@@ -60,8 +67,9 @@ export async function activate(ctx) {
   function show(sessionId) {
     const estimate = estimates.get(sessionId);
     const rate = estimate?.rate ?? completed.get(sessionId);
-    const text = rate == null ? "— tok/s" : `${estimate ? "≈" : ""}${rate.toFixed(1)} tok/s`;
-    const tooltip = rateTooltip(text, summaries.get(sessionId), Boolean(estimate));
+    const text = rate == null ? "— tok/s" : `${estimate ? "≈" : ""}${rateValue(rate)} tok/s`;
+    const rateLabel = estimate ? "流式估算" : rate == null ? "" : "最近一段";
+    const tooltip = rateTooltip(text, summaries.get(sessionId), rateLabel);
     ctx.slots.update("tps", { text, tooltip }, sessionId ? { sessionId } : "app");
   }
 
