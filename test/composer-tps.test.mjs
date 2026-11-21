@@ -41,17 +41,23 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
     rmSync(root, { recursive: true, force: true });
   });
 
-  async function load(version, sessionId) {
+  async function load(version, sessionId, locale = "zh-CN") {
     writeFileSync(join(app, "package.json"), JSON.stringify({ version }));
     const display = new Map();
     const tooltips = new Map();
     const commands = new Map();
     const views = new Map();
     const opened = [];
-    let select, receive;
+    let select, receive, changeLocale;
     await activate({
       extension: { dataPath: join(root, "data") },
       log: { warn() {} },
+      env: locale == null ? undefined : {
+        onDidChange(listener) {
+          changeLocale = listener;
+          listener({ locale });
+        },
+      },
       commands: { register(id, run) { commands.set(id, run); } },
       views: {
         register(id, view) { views.set(id, view); },
@@ -75,6 +81,7 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
       commands,
       views,
       opened,
+      setLocale: (locale) => changeLocale({ locale }),
       switchTo: (id) => select({ sessions: [{ sessionId: id }] }),
       generate: (id, phase, rate) => receive({ sessionId: id, requestId: "request-1", phase, outputTokensPerSecond: rate }),
     };
@@ -90,6 +97,13 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   assert.match(current.tooltips.get("sess-a"), /会话 1 轮 · 最近一轮 2 段/);
   assert.match(current.tooltips.get("sess-a"), /最近一轮 2 段\n\n输出 98 tok/);
   assert.match(current.tooltips.get("sess-a"), /峰值 \/ 均速 · 样本过短/);
+  assert.match(current.tooltips.get("sess-a"), /净生成 58 毫秒/);
+  current.setLocale("en-US");
+  assert.match(current.tooltips.get("sess-a"), /1 turn · 2 segments last turn\n\nOutput 98 tok/);
+  assert.match(current.tooltips.get("sess-a"), /Peak \/ Avg · Sample too short/);
+  assert.match(current.tooltips.get("sess-a"), /TTFT 0.8 s · Net gen 58 ms/);
+  assert.match(current.tooltips.get("app"), /Open TPS monitor$/);
+  current.setLocale("zh-TW");
   assert.match(current.tooltips.get("sess-a"), /净生成 58 毫秒/);
   assert.equal(current.views.get("dashboard").entry, "./dashboard/index.html");
   await current.commands.get("open-dashboard")({ scope: { kind: "session", sessionId: "sess-a" } });
@@ -125,6 +139,13 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
     await current.generate("sess-large", "streaming", rate);
     assert.equal(current.display.get("sess-large"), `≈${text} tok/s`);
   }
+  current.setLocale("en-GB");
+  assert.match(current.tooltips.get("sess-large"), /^≈1B tok\/s · Live estimate\n/);
+  assert.match(current.tooltips.get("sess-large"), /Waiting for request to finish/);
+  await current.switchTo("sess-b");
+  assert.match(current.tooltips.get("sess-b"), /No request stats/);
+  assert.equal(current.display.get("sess-a"), "39.8 tok/s");
+  current.setLocale("zh-CN");
   addMessage.run("sess-large", JSON.stringify({ role: "user" }));
   addRequest.run("sess-large", 2_500_000_000, now - 1500, now - 500, 200, "turn-large");
   db.prepare("UPDATE model_usage SET reasoning_tokens = ? WHERE session_id = ?").run(1_200_000, "sess-large");
@@ -134,4 +155,14 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   assert.match(tooltip, /输出 2\.5B tok · 思考 1\.2M tok\n峰值 2\.5B · 均速 2\.5B tok\/s/);
   assert.match(tooltip, /\n\n点击打开监控面板$/);
   assert.ok(tooltip.length <= 200);
+
+  const localized = await load("3.19.0", "sess-large", "en-US");
+  const english = localized.tooltips.get("sess-large");
+  assert.match(english, /^2\.5B tok\/s · Last segment\n1 turn · 1 segment last turn/);
+  assert.match(english, /Output 2\.5B tok · Reasoning 1\.2M tok\nPeak 2\.5B · Avg 2\.5B tok\/s/);
+  assert.match(english, /TTFT 0.2 s · Net gen 1.0 s\nTotal 1.2 s\n\nOpen TPS monitor$/);
+  assert.ok(english.length <= 200);
+
+  const system = await load("3.18.2", "sess-b", null);
+  assert.equal(system.display.get("sess-b"), "112.6 tok/s");
 });

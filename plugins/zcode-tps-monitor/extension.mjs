@@ -6,34 +6,81 @@ const numbers = new Intl.NumberFormat("en-US");
 const compactNumbers = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 const compact = (value) => compactNumbers.format(value).replace(/K$/, "k");
 const rateValue = (value) => value < 1000 ? value.toFixed(1) : compact(value);
-const seconds = (ms) => ms == null ? "—" : `${(ms / 1000).toFixed(1)} 秒`;
-const netTime = (ms) => ms > 0 && ms < 1000 ? `${ms} 毫秒` : seconds(ms || null);
+const countText = (value) => value == null ? "—" : numbers.format(value);
+const englishCount = (value, noun) => `${countText(value)} ${noun}${value === 1 ? "" : "s"}`;
+const seconds = (ms, unit) => ms == null ? "—" : `${(ms / 1000).toFixed(1)} ${unit}`;
+const netTime = (ms, copy) => ms > 0 && ms < 1000 ? `${ms} ${copy.milliseconds}` : seconds(ms || null, copy.seconds);
 
-function rateTooltip(text, summary, rateLabel) {
+const chinese = {
+  live: "流式估算",
+  last: "最近一段",
+  turns: (count) => `会话 ${countText(count)} 轮`,
+  segments: (count, current) => `${current ? "本轮" : "最近一轮"} ${countText(count)} 段`,
+  waiting: "本轮等待请求完成",
+  empty: "暂无请求统计",
+  output: "输出",
+  reasoning: "思考",
+  peak: "峰值",
+  avg: "均速",
+  tooShort: "样本过短",
+  first: "首字",
+  net: "净生成",
+  total: "总用时",
+  seconds: "秒",
+  milliseconds: "毫秒",
+  open: "点击打开监控面板",
+};
+
+const english = {
+  live: "Live estimate",
+  last: "Last segment",
+  turns: (count) => englishCount(count, "turn"),
+  segments: (count, current) => `${englishCount(count, "segment")} ${current ? "this" : "last"} turn`,
+  waiting: "Waiting for request to finish",
+  empty: "No request stats",
+  output: "Output",
+  reasoning: "Reasoning",
+  peak: "Peak",
+  avg: "Avg",
+  tooShort: "Sample too short",
+  first: "TTFT",
+  net: "Net gen",
+  total: "Total",
+  seconds: "s",
+  milliseconds: "ms",
+  open: "Open TPS monitor",
+};
+
+const copyForLocale = (locale) => /^zh(?:[-_]|$)/i.test(locale) ? chinese : english;
+
+function rateTooltip(text, summary, rateLabel, copy) {
   const lines = [rateLabel ? `${text} · ${rateLabel}` : text];
   if (summary) {
     const { sessionTurns, turn, current } = summary;
-    const count = sessionTurns == null ? "—" : numbers.format(sessionTurns);
+    const turns = copy.turns(sessionTurns);
     if (turn) {
-      const label = current ? "本轮" : "最近一轮";
-      const reasoning = turn.totalReasoning > 0 ? ` · 思考 ${compact(turn.totalReasoning)} tok` : "";
+      const reasoning = turn.totalReasoning > 0 ? ` · ${copy.reasoning} ${compact(turn.totalReasoning)} tok` : "";
       lines.push(
-        `会话 ${count} 轮 · ${label} ${turn.requests} 段`,
+        `${turns} · ${copy.segments(turn.requests, current)}`,
         "",
-        `输出 ${compact(turn.totalOutput)} tok${reasoning}`,
+        `${copy.output} ${compact(turn.totalOutput)} tok${reasoning}`,
         turn.rated > 0
-          ? `峰值 ${rateValue(turn.peak)} · 均速 ${rateValue(turn.tokPerSec)} tok/s`
-          : "峰值 / 均速 · 样本过短",
-        `首字 ${seconds(turn.ttftMs)} · 净生成 ${netTime(turn.genMs)}`,
-        `总用时 ${seconds(turn.totalMs)}`,
+          ? `${copy.peak} ${rateValue(turn.peak)} · ${copy.avg} ${rateValue(turn.tokPerSec)} tok/s`
+          : `${copy.peak} / ${copy.avg} · ${copy.tooShort}`,
+        `${copy.first} ${seconds(turn.ttftMs, copy.seconds)} · ${copy.net} ${netTime(turn.genMs, copy)}`,
+        `${copy.total} ${seconds(turn.totalMs, copy.seconds)}`,
       );
     } else {
-      lines.push(`会话 ${count} 轮 · ${current ? "本轮等待请求完成" : "暂无请求统计"}`);
+      lines.push(`${turns} · ${current ? copy.waiting : copy.empty}`);
     }
   }
-  // Reserve the action line within the ZCode slot's tooltip limit.
-  const action = "\n\n点击打开监控面板";
-  return lines.join("\n").slice(0, 200 - action.length).trimEnd() + action;
+  const tooltip = [...lines, "", copy.open].join("\n");
+  // Fit long English cards without cutting a value or the monitor action.
+  if (tooltip.length <= 200) return tooltip;
+  const body = lines.filter(Boolean).join("\n");
+  const limit = 199 - copy.open.length;
+  const end = body.length <= limit ? body.length : Math.max(0, body.lastIndexOf("\n", limit));
+  return `${body.slice(0, end)}\n${copy.open}`;
 }
 
 function supportsDesktopVersion(version) {
@@ -62,14 +109,15 @@ export async function activate(ctx) {
   const completed = new Map();
   const estimates = new Map();
   const summaries = new Map();
+  let copy = copyForLocale(Intl.DateTimeFormat().resolvedOptions().locale);
   const fileFor = (sessionId) => join(directory, `${encodeURIComponent(sessionId)}.json`);
 
   function show(sessionId) {
     const estimate = estimates.get(sessionId);
     const rate = estimate?.rate ?? completed.get(sessionId);
     const text = rate == null ? "— tok/s" : `${estimate ? "≈" : ""}${rateValue(rate)} tok/s`;
-    const rateLabel = estimate ? "流式估算" : rate == null ? "" : "最近一段";
-    const tooltip = rateTooltip(text, summaries.get(sessionId), rateLabel);
+    const rateLabel = estimate ? copy.live : rate == null ? "" : copy.last;
+    const tooltip = rateTooltip(text, summaries.get(sessionId), rateLabel, copy);
     ctx.slots.update("tps", { text, tooltip }, sessionId ? { sessionId } : "app");
   }
 
@@ -106,6 +154,13 @@ export async function activate(ctx) {
   }
 
   show(null);
+  ctx.env?.onDidChange?.(({ locale }) => {
+    const next = copyForLocale(locale);
+    if (next === copy) return;
+    copy = next;
+    show(null);
+    for (const sessionId of new Set([...completed.keys(), ...estimates.keys()])) show(sessionId);
+  });
   ctx.views.register("dashboard", {
     entry: "./dashboard/index.html",
     tools: {

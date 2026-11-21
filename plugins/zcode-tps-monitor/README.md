@@ -39,7 +39,7 @@
 | `statsFormat.clock` | `true` / `false` | 行尾 ⏱ 时刻 |
 | `statsFormat.spark` | `true` / `false` | 桌面卡片走势条(默认开);`sparkMax` 限段数(1–8,默认 4) |
 
-单行各字段含义与数字规则(净/总、紧凑单位等)见[仓库 README 的字段表](../../README.md#效果预览)。
+底栏统计、语言和数字规则见[仓库 README](../../README.md#使用)。
 
 ## 能力一览
 
