@@ -111,8 +111,8 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
   writeFileSync(join(root, "sessions", "sess-a.json"), JSON.stringify({ ts: now, promptTs: now - 1800 }));
   addMessage.run("sess-a", JSON.stringify({ role: "user" }));
   await current.generate("sess-a", "streaming", 42.1);
-  assert.equal(current.display.get("sess-a"), "≈42.1 tok/s");
-  assert.match(current.tooltips.get("sess-a"), /^≈42\.1 tok\/s · 流式估算/);
+  assert.equal(current.display.get("sess-a"), "42.1 tok/s");
+  assert.match(current.tooltips.get("sess-a"), /^42\.1 tok\/s · 流式估算/);
   assert.match(current.tooltips.get("sess-a"), /会话 2 轮 · 本轮等待请求完成/);
   assert.doesNotMatch(current.tooltips.get("sess-a"), /输出 98 tok/);
   addRequest.run("sess-a", 1500, now - 1600, now - 1401, 200, "turn-2"); // 199 ms：仅计总量和耗时
@@ -137,10 +137,10 @@ test("composer shows and restores per-session TPS on ZCode 3.18.2 and later", as
 
   for (const [rate, text] of [[999.9, "999.9"], [1000, "1k"], [999950, "1M"], [1e9, "1B"]]) {
     await current.generate("sess-large", "streaming", rate);
-    assert.equal(current.display.get("sess-large"), `≈${text} tok/s`);
+    assert.equal(current.display.get("sess-large"), `${text} tok/s`);
   }
   current.setLocale("en-GB");
-  assert.match(current.tooltips.get("sess-large"), /^≈1B tok\/s · Live estimate\n/);
+  assert.match(current.tooltips.get("sess-large"), /^1B tok\/s · Live estimate\n/);
   assert.match(current.tooltips.get("sess-large"), /Waiting for request to finish/);
   await current.switchTo("sess-b");
   assert.match(current.tooltips.get("sess-b"), /No request stats/);

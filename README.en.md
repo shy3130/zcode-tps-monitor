@@ -77,7 +77,7 @@ Restart ZCode to load the new version. See [GitHub Releases](https://github.com/
 
 ## Usage
 
-Send a request after installation. The rate appears next to the waveform at the bottom of the composer. A leading `≈` marks a streaming estimate. Hover for statistics, or click the waveform or rate to open the built-in dashboard.
+Send a request after installation. The rate appears next to the waveform at the bottom of the composer. Hover for statistics, or click the waveform or rate to open the built-in dashboard.
 
 | Action | Command |
 | --- | --- |

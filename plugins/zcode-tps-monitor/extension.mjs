@@ -115,7 +115,7 @@ export async function activate(ctx) {
   function show(sessionId) {
     const estimate = estimates.get(sessionId);
     const rate = estimate?.rate ?? completed.get(sessionId);
-    const text = rate == null ? "— tok/s" : `${estimate ? "≈" : ""}${rateValue(rate)} tok/s`;
+    const text = rate == null ? "— tok/s" : `${rateValue(rate)} tok/s`;
     const rateLabel = estimate ? copy.live : rate == null ? "" : copy.last;
     const tooltip = rateTooltip(text, summaries.get(sessionId), rateLabel, copy);
     ctx.slots.update("tps", { text, tooltip }, sessionId ? { sessionId } : "app");

@@ -9,7 +9,7 @@
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
       "description": "在 ZCode 桌面端输入框底部显示当前会话的 tok/s。要求 ZCode 3.18.2 或更高版本，另提供 /tps、多会话大屏和 MCP 工具。",
-      "version": "0.11.10",
+      "version": "0.11.11",
       "author": {
         "name": "Administrator"
       },

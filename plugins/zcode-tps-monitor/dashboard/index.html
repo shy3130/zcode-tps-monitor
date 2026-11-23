@@ -498,7 +498,7 @@ function updateLanes(sessions, total) {
     n.dir.textContent = s.cwd || s.sessionId;
     sparkPath(n.ln, n.area, s.history || []);
     const r = laneRate(s);
-    const rtxt = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
+    const rtxt = r == null ? "--" : rate1(r);
     if (rtxt !== n.lastRate) { n.rt.textContent = rtxt; if (r != null && n.lastRate !== null && s.status === "generating") bump(n.rt); n.lastRate = rtxt; }
     const seg = s.turn && s.turn.requests > 1 ? `${s.turn.requests} ${copy.segmentUnit(s.turn.requests)} · ` : "";
     n.sub.textContent = s.session ? seg + copy.cumulative + " " + fmtCompact(s.session.totalOutput + s.session.totalReasoning) : copy.noData;
@@ -594,7 +594,7 @@ function renderDetail(s) {
   st.textContent = copy[s.status] || s.status;
   const r = laneRate(s);
   const big = $("dRate");
-  big.textContent = r == null ? "--" : (s.requestRateEstimated ? "≈" : "") + rate1(r);
+  big.textContent = r == null ? "--" : rate1(r);
   big.className = "big" + (s.status === "idle" ? " idl" : "");
   if (r != null && s.status === "generating") bump(big);
   $("dCap").textContent = s.requestRate != null || !s.turn ? copy.segmentRate : copy.turnRate;

@@ -1,6 +1,6 @@
 {
   "name": "zcode-tps-monitor",
-  "version": "0.11.10",
+  "version": "0.11.11",
   "description": "Token rate monitor for ZCode Desktop 3.18.2 or later. Includes /tps, a multi-session dashboard, and MCP tools.",
   "author": {
     "name": "Administrator"
